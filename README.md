@@ -75,6 +75,5 @@ Includes direct support for the following relational database management systems
 * [MySQL](https://www.mysql.com/) & [MariaDB](https://mariadb.org/)
 * [PostgreSQL](https://www.postgresql.org)
 * [SQLite](https://www.sqlite.org)
-* [QL](https://modernc.org/ql)
 
 Additional database management systems can be included providing the necessary queries.
