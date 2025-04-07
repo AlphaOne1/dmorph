@@ -3,10 +3,10 @@
     <a href="https://github.com/AlphaOne1/dmorph/actions/workflows/test.yml"
        rel="external"
        target="_blank">
-        <img src="https://github.com/AlphaOne1/dmoprh/actions/workflows/test.yml/badge.svg"
+        <img src="https://github.com/AlphaOne1/dmorph/actions/workflows/test.yml/badge.svg"
              alt="Test Pipeline Result">
     </a>
-    <a href="https://github.com/AlphaOne1/dmoprh/actions/workflows/codeql.yml"
+    <a href="https://github.com/AlphaOne1/dmorph/actions/workflows/codeql.yml"
        rel="external"
        target="_blank">
         <img src="https://github.com/AlphaOne1/dmorph/actions/workflows/codeql.yml/badge.svg"
