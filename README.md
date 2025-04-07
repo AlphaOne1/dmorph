@@ -24,12 +24,12 @@
         <img src="https://goreportcard.com/badge/github.com/AlphaOne1/dmorph"
              alt="Go Report Card">
     </a>
-    <!--<a href="https://codecov.io/github/AlphaOne1/dmorph"
+    <a href="https://codecov.io/github/AlphaOne1/dmorph"
        rel="external"
        target="_blank">
-        <img src="https://codecov.io/github/AlphaOne1/dmoprh/graph/badge.svg?token=XXXXXXXX"
+        <img src="https://codecov.io/github/AlphaOne1/dmoprh/graph/badge.svg?token=Q5PURQH5ZM"
              alt="Code Coverage">
-    </a>-->
+    </a>
     <!--<a href="https://www.bestpractices.dev/projects/0000"
        rel="external"
        target="_blank">
