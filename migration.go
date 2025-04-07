@@ -167,13 +167,13 @@ func (m *Morpher) Run(db *sql.DB) error {
 	}
 
 	if err := m.Dialect.EnsureMigrationTableExists(db, m.TableName); err != nil {
-		return err
+		return fmt.Errorf("could not create migration table: %w", err)
 	}
 
 	appliedMigrations, appliedMigrationsErr := m.Dialect.AppliedMigrations(db, m.TableName)
 
 	if appliedMigrationsErr != nil {
-		return appliedMigrationsErr
+		return fmt.Errorf("could not get applied migrations: %w", appliedMigrationsErr)
 	}
 
 	slices.SortFunc(m.Migrations, migrationOrder)
