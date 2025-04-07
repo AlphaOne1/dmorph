@@ -27,7 +27,7 @@
     <a href="https://codecov.io/github/AlphaOne1/dmorph"
        rel="external"
        target="_blank">
-        <img src="https://codecov.io/github/AlphaOne1/dmoprh/graph/badge.svg?token=Q5PURQH5ZM"
+        <img src="https://codecov.io/github/AlphaOne1/dmorph/graph/badge.svg?token=Q5PURQH5ZM"
              alt="Code Coverage">
     </a>
     <!--<a href="https://www.bestpractices.dev/projects/0000"
