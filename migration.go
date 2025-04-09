@@ -40,7 +40,7 @@ var ErrMigrationTableNameInvalid = errors.New("invalid migration table name")
 
 // ErrMigrationsTooOld signalizes that the migrations to be applied are older than the migrations that are already
 // present in the database. This error can occur when an older version of the application is started using a database
-// that was used already by a newer version of the appliction.
+// that was used already by a newer version of the application.
 var ErrMigrationsTooOld = errors.New("migrations too old")
 
 // Dialect is an interface describing the functionalities needed to manage migrations inside a database.
@@ -217,7 +217,7 @@ func (m *Morpher) applyMigrations(db *sql.DB, lastMigration string) error {
 
 		// even if we are sure to catch all possibilities, we use this as a safeguard that also with later
 		// modifications, if a successful commit cannot be done, at least the rollback is executed freeing
-		// allocated ressources of the transaction.
+		// allocated resources of the transaction.
 		defer func() { _ = tx.Rollback() }()
 
 		if err := migration.Migrate(tx); err != nil {
@@ -255,6 +255,8 @@ func (m *Morpher) checkAppliedMigrations(appliedMigrations []string) error {
 	}
 
 	if len(m.Migrations) < len(appliedMigrations) {
+		// it is impossible to have a migration newer than the one already applied
+		// without having at least the same amount of previous migrations
 		return ErrMigrationsUnrelated
 	}
 
