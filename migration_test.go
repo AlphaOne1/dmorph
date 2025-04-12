@@ -53,7 +53,7 @@ func TestMigration(t *testing.T) {
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
 
-	assert.Nil(t, migrationsDirErr, "migrations directory could not be opened")
+	assert.NoError(t, migrationsDirErr, "migrations directory could not be opened")
 
 	runErr := Run(db,
 		WithDialect(DialectSQLite()),
@@ -84,7 +84,7 @@ func TestMigrationTooOld(t *testing.T) {
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
 
-	assert.Nil(t, migrationsDirErr, "migrations directory could not be opened")
+	assert.NoError(t, migrationsDirErr, "migrations directory could not be opened")
 
 	runErr := Run(db,
 		WithDialect(DialectSQLite()),
@@ -121,7 +121,7 @@ func TestMigrationUnrelated(t *testing.T) {
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
 
-	assert.Nil(t, migrationsDirErr, "migrations directory could not be opened")
+	assert.NoError(t, migrationsDirErr, "migrations directory could not be opened")
 
 	runErr := Run(db,
 		WithDialect(DialectSQLite()),
