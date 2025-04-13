@@ -1,3 +1,6 @@
+// Copyright the DMorph contributors.
+// SPDX-License-Identifier: MPL-2.0
+
 module github.com/AlphaOne1/dmorph
 
 go 1.24.0

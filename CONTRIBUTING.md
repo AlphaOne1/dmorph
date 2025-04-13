@@ -1,7 +1,7 @@
 Contributing
 ============
 
-Thanks for your interest in contributing to *dmorph*. Please take a moment to
+Thanks for your interest in contributing to *DMorph*. Please take a moment to
 review this document __before submitting a pull request__.
 
 
