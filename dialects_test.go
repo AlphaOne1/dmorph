@@ -6,11 +6,14 @@ package dmorph
 import (
 	"database/sql"
 	"os"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
+// TestDialectStatements verifies that each database dialect has valid and
+// sufficiently complete SQL statement templates.
 func TestDialectStatements(t *testing.T) {
 	// we cannot run tests against all databases, but at least we can test
 	// that the statements for the databases are somehow filled
@@ -26,6 +29,8 @@ func TestDialectStatements(t *testing.T) {
 		{name: "SQLite", caller: DialectSQLite},
 	}
 
+	re := regexp.MustCompile("%s")
+
 	for k, v := range tests {
 		d := v.caller()
 
@@ -34,21 +39,25 @@ func TestDialectStatements(t *testing.T) {
 		}
 		assert.Contains(t, d.CreateTemplate, "%s",
 			"no table name placeholder in create template for", v.name)
+		assert.Regexp(t, re, d.CreateTemplate)
 
 		if len(d.AppliedTemplate) < 10 {
 			t.Errorf("%v: applied template is too short for %v", k, v.name)
 		}
 		assert.Contains(t, d.AppliedTemplate, "%s",
 			"no table name placeholder in applied template for", v.name)
+		assert.Regexp(t, re, d.AppliedTemplate)
 
 		if len(d.RegisterTemplate) < 10 {
 			t.Errorf("%v: register template is too short for %v", k, v.name)
 		}
 		assert.Contains(t, d.RegisterTemplate, "%s",
 			"no table name placeholder in register template for", v.name)
+		assert.Regexp(t, re, d.RegisterTemplate)
 	}
 }
 
+// TestCallsOnClosedDB verifies that methods fail as expected when called on a closed database connection.
 func TestCallsOnClosedDB(t *testing.T) {
 	dbFile, dbFileErr := prepareDB()
 
@@ -74,6 +83,8 @@ func TestCallsOnClosedDB(t *testing.T) {
 	assert.Error(t, err, "expected error on closed database")
 }
 
+// TestEnsureMigrationTableExistsSQLError tests the EnsureMigrationTableExists function
+// for handling SQL errors during execution.
 func TestEnsureMigrationTableExistsSQLError(t *testing.T) {
 	d := BaseDialect{
 		CreateTemplate: `
@@ -102,6 +113,7 @@ func TestEnsureMigrationTableExistsSQLError(t *testing.T) {
 	assert.Error(t, d.EnsureMigrationTableExists(db, "test"), "expected error")
 }
 
+// TestEnsureMigrationTableExistsCommitError tests the behavior of EnsureMigrationTableExists when a commit error occurs.
 func TestEnsureMigrationTableExistsCommitError(t *testing.T) {
 	d := BaseDialect{
 		CreateTemplate: `
@@ -129,13 +141,17 @@ func TestEnsureMigrationTableExistsCommitError(t *testing.T) {
 		// defer func() { _ = os.Remove(dbFile) }()
 	}
 
-	db, dbErr := sql.Open("sqlite", "file://"+dbFile+"?_pragma=foreign_keys(1)")
+	db, dbErr := sql.Open("sqlite", dbFile)
 
 	if dbErr != nil {
 		t.Errorf("DB file could not be created: %v", dbErr)
 	} else {
 		defer func() { _ = db.Close() }()
 	}
+
+	_, execErr := db.Exec("PRAGMA foreign_keys = ON")
+
+	assert.NoError(t, execErr, "foreign keys checking could not be enabled")
 
 	assert.Error(t, d.EnsureMigrationTableExists(db, "test"), "expected error")
 }
