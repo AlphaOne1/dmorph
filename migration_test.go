@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"embed"
 	"io/fs"
+	"log/slog"
 	"os"
 	"testing"
 
@@ -329,4 +330,40 @@ func TestMigrationIsValid(t *testing.T) {
 
 		assert.ErrorIs(t, err, v.err, "error is wrong for test %v", k)
 	}
+}
+
+func TestMigrationWithLogger(t *testing.T) {
+	l := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelWarn,
+	}))
+
+	morpher, err := NewMorpher(
+		WithDialect(DialectSQLite()),
+		WithMigrationFromFile("testData/01_base_table.sql"),
+		WithLog(l),
+	)
+
+	assert.NoError(t, err, "morpher could not be created")
+	assert.Equal(t, l, morpher.Log, "logger was not set correctly")
+}
+
+func TestMigrationWithTableNameValid(t *testing.T) {
+	morpher, err := NewMorpher(
+		WithDialect(DialectSQLite()),
+		WithMigrationFromFile("testData/01_base_table.sql"),
+		WithTableName("dimorphodon"),
+	)
+
+	assert.NoError(t, err, "morpher could not be created")
+	assert.Equal(t, "dimorphodon", morpher.TableName, "table name was not set correctly")
+}
+
+func TestMigrationWithTableNameInvalid(t *testing.T) {
+	_, err := NewMorpher(
+		WithDialect(DialectSQLite()),
+		WithMigrationFromFile("testData/01_base_table.sql"),
+		WithTableName("di/mor/pho/don"),
+	)
+
+	assert.Error(t, err, "morpher could created with invalid table name")
 }
