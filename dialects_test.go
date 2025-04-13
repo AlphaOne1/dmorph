@@ -1,8 +1,11 @@
 package dmorph
 
 import (
-	"github.com/stretchr/testify/assert"
+	"database/sql"
+	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDialectStatements(t *testing.T) {
@@ -41,4 +44,57 @@ func TestDialectStatements(t *testing.T) {
 		assert.Contains(t, d.RegisterTemplate, "%s",
 			"no table name placeholder in register template for", v.name)
 	}
+}
+
+func TestCallsOnClosedDB(t *testing.T) {
+	dbFile, dbFileErr := prepareDB()
+
+	if dbFileErr != nil {
+		t.Errorf("DB file could not be created: %v", dbFileErr)
+	} else {
+		defer func() { _ = os.Remove(dbFile) }()
+	}
+
+	db, dbErr := sql.Open("sqlite", dbFile)
+
+	if dbErr != nil {
+		t.Errorf("DB file could not be created: %v", dbErr)
+	} else {
+		_ = db.Close()
+	}
+
+	assert.Error(t,
+		DialectSQLite().EnsureMigrationTableExists(db, "irrelevant"),
+		"expected error on closed database")
+
+	_, err := DialectSQLite().AppliedMigrations(db, "irrelevant")
+	assert.Error(t, err, "expected error on closed database")
+}
+
+func TestEnsureMigrationTableExistsSQLError(t *testing.T) {
+	d := BaseDialect{
+		CreateTemplate: `
+            CRATE TABLE test (
+                id        VARCHAR(255) PRIMARY KEY,
+                create_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`,
+	}
+
+	dbFile, dbFileErr := prepareDB()
+
+	if dbFileErr != nil {
+		t.Errorf("DB file could not be created: %v", dbFileErr)
+	} else {
+		defer func() { _ = os.Remove(dbFile) }()
+	}
+
+	db, dbErr := sql.Open("sqlite", dbFile)
+
+	if dbErr != nil {
+		t.Errorf("DB file could not be created: %v", dbErr)
+	} else {
+		defer func() { _ = db.Close() }()
+	}
+
+	assert.Error(t, d.EnsureMigrationTableExists(db, "test"), "expected error")
 }
