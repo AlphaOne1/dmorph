@@ -99,6 +99,14 @@ func TestMigrationUpdate(t *testing.T) {
 	assert.NoError(t, runErr, "migrations could not be run")
 }
 
+// TestMigrationUnableToCreateMorpher tests to use the Run function without any
+// useful parameter.
+func TestMigrationUnableToCreateMorpher(t *testing.T) {
+	runErr := Run(nil)
+
+	assert.Error(t, runErr, "morpher should not have run")
+}
+
 // TestMigration tests what happens, if the applied migrations are too old.
 func TestMigrationTooOld(t *testing.T) {
 	dbFile, dbFileErr := prepareDB()
@@ -332,6 +340,8 @@ func TestMigrationIsValid(t *testing.T) {
 	}
 }
 
+// TestMigrationWithLogger validates the creation of a Morpher with a logger and ensures
+// the logger is applied correctly.
 func TestMigrationWithLogger(t *testing.T) {
 	l := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelWarn,
@@ -347,6 +357,17 @@ func TestMigrationWithLogger(t *testing.T) {
 	assert.Equal(t, l, morpher.Log, "logger was not set correctly")
 }
 
+// TestMigrationWithoutMigrations ensures that creating a Morpher instance without migrations results in an error.
+func TestMigrationWithoutMigrations(t *testing.T) {
+	_, err := NewMorpher(
+		WithDialect(DialectSQLite()),
+	)
+
+	assert.Error(t, err, "morpher created without migrations")
+}
+
+// TestMigrationWithTableNameValid verifies the correct creation of a Morpher
+// with a valid custom table name configuration.
 func TestMigrationWithTableNameValid(t *testing.T) {
 	morpher, err := NewMorpher(
 		WithDialect(DialectSQLite()),
@@ -358,7 +379,21 @@ func TestMigrationWithTableNameValid(t *testing.T) {
 	assert.Equal(t, "dimorphodon", morpher.TableName, "table name was not set correctly")
 }
 
-func TestMigrationWithTableNameInvalid(t *testing.T) {
+// TestMigrationWithTableNameInvalidSize verifies that creating a Morpher
+// with an invalid table name size produces an error.
+func TestMigrationWithTableNameInvalidSize(t *testing.T) {
+	_, err := NewMorpher(
+		WithDialect(DialectSQLite()),
+		WithMigrationFromFile("testData/01_base_table.sql"),
+		WithTableName(""),
+	)
+
+	assert.Error(t, err, "morpher could created with empty table name")
+}
+
+// TestMigrationWithTableNameInvalidChars ensures that creating a Morpher
+// fails when the table name contains invalid characters.
+func TestMigrationWithTableNameInvalidChars(t *testing.T) {
 	_, err := NewMorpher(
 		WithDialect(DialectSQLite()),
 		WithMigrationFromFile("testData/01_base_table.sql"),
@@ -366,4 +401,78 @@ func TestMigrationWithTableNameInvalid(t *testing.T) {
 	)
 
 	assert.Error(t, err, "morpher could created with invalid table name")
+}
+
+// TestMigrationRunInvalid verifies that running a Morpher with invalid configuration results in an error.
+func TestMigrationRunInvalid(t *testing.T) {
+	morpher := Morpher{}
+
+	runErr := morpher.Run(nil)
+
+	assert.Error(t, runErr, "morpher should run")
+}
+
+// TestMigrationRunInvalidCreate tests the behavior of running a migration
+// with an invalid CreateTemplate in the dialect.
+func TestMigrationRunInvalidCreate(t *testing.T) {
+	dbFile, dbFileErr := prepareDB()
+
+	if dbFileErr != nil {
+		t.Errorf("DB file could not be created: %v", dbFileErr)
+	} else {
+		defer func() { _ = os.Remove(dbFile) }()
+	}
+
+	db, dbErr := sql.Open("sqlite", dbFile)
+
+	if dbErr != nil {
+		t.Errorf("DB file could not be created: %v", dbErr)
+	} else {
+		defer func() { _ = db.Close() }()
+	}
+
+	dialect := DialectSQLite()
+	dialect.CreateTemplate = "utter nonsense"
+
+	morpher, morpherErr := NewMorpher(
+		WithDialect(dialect),
+		WithMigrationFromFile("testData/01_base_table.sql"))
+
+	assert.NoError(t, morpherErr, "morpher could not be created")
+
+	runErr := morpher.Run(db)
+
+	assert.Error(t, runErr, "morpher should not run")
+}
+
+// TestMigrationRunInvalidApplied tests the failure scenario where the AppliedTemplate of the dialect is invalid.
+func TestMigrationRunInvalidApplied(t *testing.T) {
+	dbFile, dbFileErr := prepareDB()
+
+	if dbFileErr != nil {
+		t.Errorf("DB file could not be created: %v", dbFileErr)
+	} else {
+		defer func() { _ = os.Remove(dbFile) }()
+	}
+
+	db, dbErr := sql.Open("sqlite", dbFile)
+
+	if dbErr != nil {
+		t.Errorf("DB file could not be created: %v", dbErr)
+	} else {
+		defer func() { _ = db.Close() }()
+	}
+
+	dialect := DialectSQLite()
+	dialect.AppliedTemplate = "utter nonsense"
+
+	morpher, morpherErr := NewMorpher(
+		WithDialect(dialect),
+		WithMigrationFromFile("testData/01_base_table.sql"))
+
+	assert.NoError(t, morpherErr, "morpher could not be created")
+
+	runErr := morpher.Run(db)
+
+	assert.Error(t, runErr, "morpher should not run")
 }
