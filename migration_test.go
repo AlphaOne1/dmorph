@@ -21,6 +21,7 @@ func prepareDB() (string, error) {
 	var result string
 
 	dbFile, dbFileErr := os.CreateTemp("", "")
+	// dbFile, dbFileErr := os.Create("testdb.sqlite")
 
 	if dbFileErr != nil {
 		return "", dbFileErr

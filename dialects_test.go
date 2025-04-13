@@ -98,3 +98,41 @@ func TestEnsureMigrationTableExistsSQLError(t *testing.T) {
 
 	assert.Error(t, d.EnsureMigrationTableExists(db, "test"), "expected error")
 }
+
+func TestEnsureMigrationTableExistsCommitError(t *testing.T) {
+	d := BaseDialect{
+		CreateTemplate: `
+			CREATE TABLE t0 (
+			    id INTEGER PRIMARY KEY
+			);
+
+			CREATE TABLE t1 (
+			    id        INTEGER PRIMARY KEY,
+				parent_id INTEGER REFERENCES t0 (id) DEFERRABLE INITIALLY DEFERRED
+			);
+
+			INSERT INTO t0 (id)            VALUES (1);
+			INSERT INTO t1 (id, parent_id) VALUES (1, 1);
+
+			-- %s catching argument
+			DELETE FROM t0 WHERE id = 1;`,
+	}
+
+	dbFile, dbFileErr := prepareDB()
+
+	if dbFileErr != nil {
+		t.Errorf("DB file could not be created: %v", dbFileErr)
+	} else {
+		// defer func() { _ = os.Remove(dbFile) }()
+	}
+
+	db, dbErr := sql.Open("sqlite", "file://"+dbFile+"?_pragma=foreign_keys(1)")
+
+	if dbErr != nil {
+		t.Errorf("DB file could not be created: %v", dbErr)
+	} else {
+		defer func() { _ = db.Close() }()
+	}
+
+	assert.Error(t, d.EnsureMigrationTableExists(db, "test"), "expected error")
+}
