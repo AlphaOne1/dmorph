@@ -80,6 +80,9 @@ Includes direct support for the following relational database management systems
 * [SQLite](https://www.sqlite.org)
 
 Additional database management systems can be included providing the necessary queries.
+While *DMorph* offers support for these database management systems, it does depend on anything
+than the Go standard library. Any other dependencies are solely for testing purposes and do not
+affect users of this library.
 
 
 Installation
