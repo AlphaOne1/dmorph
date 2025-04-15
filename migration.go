@@ -88,6 +88,14 @@ func WithDialect(dialect Dialect) MorphOption {
 	}
 }
 
+// WithMigrations adds the given migrations to be executed.
+func WithMigrations(migrations ...Migration) MorphOption {
+	return func(m *Morpher) error {
+		m.Migrations = append(m.Migrations, migrations...)
+		return nil
+	}
+}
+
 // WithLog sets the logger that is to be used. If none is supplied, the default logger
 // is used instead.
 func WithLog(log *slog.Logger) MorphOption {

@@ -100,6 +100,39 @@ func TestMigrationUpdate(t *testing.T) {
 	assert.NoError(t, runErr, "migrations could not be run")
 }
 
+type TestMigrationImpl struct{}
+
+func (m TestMigrationImpl) Key() string { return "TestMigration" }
+func (m TestMigrationImpl) Migrate(tx *sql.Tx) error {
+	_, err := tx.Exec("CREATE TABLE t0 (id INTEGER PRIMARY KEY)")
+	return err
+}
+
+// TestWithMigrations tests the adding of migrations using WithMigrations.
+func TestWithMigrations(t *testing.T) {
+	dbFile, dbFileErr := prepareDB()
+
+	if dbFileErr != nil {
+		t.Errorf("DB file could not be created: %v", dbFileErr)
+	} else {
+		defer func() { _ = os.Remove(dbFile) }()
+	}
+
+	db, dbErr := sql.Open("sqlite", dbFile)
+
+	if dbErr != nil {
+		t.Errorf("DB file could not be created: %v", dbErr)
+	} else {
+		defer func() { _ = db.Close() }()
+	}
+
+	runErr := Run(db,
+		WithDialect(DialectSQLite()),
+		WithMigrations(TestMigrationImpl{}))
+
+	assert.NoError(t, runErr, "did not expect error")
+}
+
 // TestMigrationUnableToCreateMorpher tests to use the Run function without any
 // useful parameter.
 func TestMigrationUnableToCreateMorpher(t *testing.T) {
