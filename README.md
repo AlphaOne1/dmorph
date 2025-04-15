@@ -65,9 +65,10 @@
 DMorph
 ======
 
-*DMorph* is a database migration library. Programs that use a database and have to preserve the data
-between versions can utilize *DMorph* to apply the necessary migration steps. If a program can
-afford to lose all data between version upgrades, this library is not necessary.
+*DMorph* (pronounced [diˈmɔʁf]) is a database migration library. Programs that use a database and
+have to preserve the data between versions can utilize *DMorph* to apply the necessary migration
+steps. If a program can afford to lose all data between version upgrades, this library is not
+necessary.
 
 Includes direct support for the following relational database management systems:
 
@@ -94,8 +95,8 @@ $ go get github.com/AlphaOne1/dmorph
 Getting Started
 ---------------
 
-*DMorph* applies migrations to a database. A migration is a series of steps, defined either in an
-SQL file or programmatically.
+*DMorph* applies migrations to a database.
+A migration is a series of steps, defined either in an SQL file or programmatically.
 
 
 ### Migration from File
@@ -142,6 +143,8 @@ func migrate(db *sql.DB) error {
 
 In this example just one file is used, the `WithMigrationFromFile` can be given multiple times.
 Migrations are executed in alphabetical order of their key. For files the key is the file's name.
+The `WithDialect` option is used to select the correct SQL dialect, as *DMorph* does not have
+a means to get that information (yet).
 
 
 ### Migrations from Folder
@@ -200,11 +203,11 @@ migration fulfilling this interface could look like this:
 ```go
 type CustomMigration struct {}
 
-func (m *CustomMigration) Key() string {
+func (m CustomMigration) Key() string {
     return "0001_custom"
 }
 
-func (m *CustomMigration) Migrate(tx *sql.Tx) error {
+func (m CustomMigration) Migrate(tx *sql.Tx) error {
     _, err := tx.Exec(`CREATE TABLE tab0(id INTEGER PRIMARY KEY)`)
     return err
 }
@@ -220,6 +223,40 @@ This newly created migration can then be passed to *DMorph* as follows:
 func migrate(db *sql.DB) error {
     return dmorph.Run(db,
         dmorph.WithDialect(dmorph.DialectSQLite()),
-        dmorph.WithMigration(CustomMigration{}))
+        dmorph.WithMigrations(CustomMigration{}))
 }
 ```
+
+### New Database SQL Dialect
+
+*DMorph* uses the Dialect interface to adapt to different database management systems:
+
+```go
+type Dialect interface {
+    EnsureMigrationTableExists(db *sql.DB, tableName string) error
+    AppliedMigrations(db *sql.DB, tableName string) ([]string, error)
+    RegisterMigration(tx *sql.Tx, id string, tableName string) error
+}
+```
+
+It contains a convenience wrapper, `BaseDialect`, that fits most database systems. It implements the
+above functions using a set of user supplied SQL statements:
+
+```go
+type BaseDialect struct {
+    CreateTemplate   string
+    AppliedTemplate  string
+    RegisterTemplate string
+}
+```
+
+All the included SQL dialects use the `BaseDialect` to implement their functionality. The tests for
+*DMorph* are done using the [SQLite dialect](dialect_sqlite.go).
+
+As the migration table name can be user supplied, the statements need to have placeholders that will
+fill the final table name. As there might be special characters, it is always enclosed in the
+identifier enclosing characters of the database.
+
+*DMorph* uses the `ValidTableNameRex` regular expression, to check if a table name is principally
+valid. The regular expression may be adapted, but it is strongly advised to only do so in pressing
+circumstances.
