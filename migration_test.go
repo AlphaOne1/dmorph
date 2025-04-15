@@ -18,6 +18,7 @@ import (
 //go:embed testData
 var testMigrationsDir embed.FS
 
+// prepareDB creates a temporary SQLite database file and returns its file path.
 func prepareDB() (string, error) {
 	var result string
 

@@ -3,6 +3,7 @@
 
 package dmorph
 
+// DialectPostgres returns a Dialect configured for Postgres databases.
 func DialectPostgres() BaseDialect {
 	return BaseDialect{
 		CreateTemplate: `

@@ -9,12 +9,16 @@ import (
 	"fmt"
 )
 
+// BaseDialect is a convenience type for databases that manage the necessary operations solely using
+// queries. Defining the CreateTemplate, AppliedTemplate and RegisterTemplate enables the BaseDialect to
+// perform all the necessary operation to fulfill the Dialect interface.
 type BaseDialect struct {
 	CreateTemplate   string
 	AppliedTemplate  string
 	RegisterTemplate string
 }
 
+// EnsureMigrationTableExists ensures that the migration table, saving the applied migrations ids, exists.
 func (b BaseDialect) EnsureMigrationTableExists(db *sql.DB, tableName string) error {
 	tx, err := db.Begin()
 
@@ -39,6 +43,7 @@ func (b BaseDialect) EnsureMigrationTableExists(db *sql.DB, tableName string) er
 	return nil
 }
 
+// AppliedMigrations gets the already applied migrations from the database, ordered by application date.
 func (b BaseDialect) AppliedMigrations(db *sql.DB, tableName string) ([]string, error) {
 	rows, rowsErr := db.Query(fmt.Sprintf(b.AppliedTemplate, tableName))
 
@@ -61,6 +66,7 @@ func (b BaseDialect) AppliedMigrations(db *sql.DB, tableName string) ([]string, 
 	return result, errors.Join(rows.Err(), scanErr)
 }
 
+// RegisterMigration registers a migration in the migration table.
 func (b BaseDialect) RegisterMigration(tx *sql.Tx, id string, tableName string) error {
 	_, err := tx.Exec(fmt.Sprintf(b.RegisterTemplate, tableName),
 		sql.Named("id", id))

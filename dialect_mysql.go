@@ -3,6 +3,7 @@
 
 package dmorph
 
+// DialectMySQL returns a Dialect configured for MySQL databases.
 func DialectMySQL() BaseDialect {
 	return BaseDialect{
 		CreateTemplate: "CREATE TABLE IF NOT EXISTS `%s`" + ` (

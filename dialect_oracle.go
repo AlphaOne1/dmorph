@@ -3,6 +3,7 @@
 
 package dmorph
 
+// DialectOracle returns a Dialect configured for Oracle Database.
 func DialectOracle() BaseDialect {
 	return BaseDialect{
 		CreateTemplate: `

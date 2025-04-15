@@ -16,6 +16,7 @@ import (
 // MigrationTableName is the default name for the migration management table in the database.
 const MigrationTableName = "migrations"
 
+// ValidTableNameRex is the regular expression used to check if a given migration table name is valid.
 var ValidTableNameRex = regexp.MustCompile("^[a-zA-Z0-9_]+$")
 
 // ErrMigrationsUnrelated signalizes, that the set of migrations to apply and the already applied set do not have the
@@ -52,8 +53,8 @@ type Dialect interface {
 
 // Migration is an interface to provide abstract information about the migration at hand.
 type Migration interface {
-	Key() string
-	Migrate(tx *sql.Tx) error
+	Key() string              // identifier, used for ordering
+	Migrate(tx *sql.Tx) error // migration functionality
 }
 
 // migrationOrder is used to order Migration instances.

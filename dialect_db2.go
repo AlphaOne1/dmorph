@@ -3,6 +3,7 @@
 
 package dmorph
 
+// DialectDB2 returns a Dialect configured for DB2 databases.
 func DialectDB2() BaseDialect {
 	return BaseDialect{
 		CreateTemplate: `

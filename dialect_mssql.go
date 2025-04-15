@@ -3,6 +3,7 @@
 
 package dmorph
 
+// DialectMSSQL returns a Dialect configured for Microsoft SQL Server databases.
 func DialectMSSQL() BaseDialect {
 	return BaseDialect{
 		CreateTemplate: `

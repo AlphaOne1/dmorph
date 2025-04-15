@@ -13,20 +13,24 @@ import (
 	"os"
 )
 
+// FileMigration implements the Migration interface. It helps to apply migrations from a file or fs.FS.
 type FileMigration struct {
 	Name          string
 	FS            fs.FS
 	migrationFunc func(tx *sql.Tx, migration string) error
 }
 
+// Key returns the key of the migration to register in the migration table.
 func (f FileMigration) Key() string {
 	return f.Name
 }
 
+// Migrate executes the migration on the given transaction.
 func (f FileMigration) Migrate(tx *sql.Tx) error {
 	return f.migrationFunc(tx, f.Name)
 }
 
+// WithMigrationFromFile generates a FileMigration that will run the content of the given file.
 func WithMigrationFromFile(name string) MorphOption {
 	return func(morpher *Morpher) error {
 		morpher.Migrations = append(morpher.Migrations, FileMigration{
@@ -40,7 +44,7 @@ func WithMigrationFromFile(name string) MorphOption {
 
 				defer func() { _ = m.Close() }()
 
-				return applyFileSteps(tx, m, migration, morpher.Log)
+				return applyStepsStream(tx, m, migration, morpher.Log)
 			},
 		})
 
@@ -48,6 +52,8 @@ func WithMigrationFromFile(name string) MorphOption {
 	}
 }
 
+// WithMigrationFromFileFS generates a FileMigration that will run the content of the given file from the
+// given filesystem.
 func WithMigrationFromFileFS(name string, dir fs.FS) MorphOption {
 	return func(morpher *Morpher) error {
 		morpher.Migrations = append(morpher.Migrations, migrationFromFileFS(name, dir, morpher.Log))
@@ -56,26 +62,27 @@ func WithMigrationFromFileFS(name string, dir fs.FS) MorphOption {
 	}
 }
 
+// WithMigrationsFromFS generates a FileMigration that will run all migration scripts of the files in the given
+// filesystem.
 func WithMigrationsFromFS(d fs.ReadDirFS) MorphOption {
 	return func(morpher *Morpher) error {
 		dirEntry, err := d.ReadDir(".")
 
-		if err != nil {
-			return err
-		}
-
-		for _, entry := range dirEntry {
-			morpher.Log.Info("entry", slog.String("name", entry.Name()))
-			if entry.Type().IsRegular() {
-				morpher.Migrations = append(morpher.Migrations,
-					migrationFromFileFS(entry.Name(), d, morpher.Log))
+		if err == nil {
+			for _, entry := range dirEntry {
+				morpher.Log.Info("entry", slog.String("name", entry.Name()))
+				if entry.Type().IsRegular() {
+					morpher.Migrations = append(morpher.Migrations,
+						migrationFromFileFS(entry.Name(), d, morpher.Log))
+				}
 			}
 		}
 
-		return nil
+		return err
 	}
 }
 
+// migrationFromFileFS creates a FileMigration instance for a specific migration file from an fs.FS directory.
 func migrationFromFileFS(name string, dir fs.FS, log *slog.Logger) FileMigration {
 	return FileMigration{
 		Name: name,
@@ -89,17 +96,20 @@ func migrationFromFileFS(name string, dir fs.FS, log *slog.Logger) FileMigration
 
 			defer func() { _ = m.Close() }()
 
-			return applyFileSteps(tx, m, migration, log)
+			return applyStepsStream(tx, m, migration, log)
 		},
 	}
 }
 
-func applyFileSteps(tx *sql.Tx, r io.Reader, id string, log *slog.Logger) error {
+// applyStepsStream executes database migration steps read from an io.Reader, separated by semicolons, in a transaction.
+// Returns the corresponding error if any step execution fails.
+func applyStepsStream(tx *sql.Tx, r io.Reader, id string, log *slog.Logger) error {
 	buf := bytes.Buffer{}
 
 	scanner := bufio.NewScanner(r)
+	var i int
 
-	for i := 0; scanner.Scan(); {
+	for i = 0; scanner.Scan(); {
 		buf.Write(scanner.Bytes())
 
 		if scanner.Text() == ";" {
@@ -113,6 +123,18 @@ func applyFileSteps(tx *sql.Tx, r io.Reader, id string, log *slog.Logger) error 
 
 			buf.Reset()
 			i++
+		}
+	}
+
+	// cleanup after, for final statement without the closing ; on a new line
+	if buf.Len() > 0 {
+		log.Info("migration step",
+			slog.String("id", id),
+			slog.Int("step", i),
+		)
+
+		if _, err := tx.Exec(buf.String()); err != nil {
+			return err
 		}
 	}
 

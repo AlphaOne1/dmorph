@@ -3,6 +3,7 @@
 
 package dmorph
 
+// DialectSQLite returns a Dialect configured for SQLite databases.
 func DialectSQLite() BaseDialect {
 	return BaseDialect{
 		CreateTemplate: `
