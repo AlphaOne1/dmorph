@@ -50,15 +50,15 @@ func (b BaseDialect) AppliedMigrations(db *sql.DB, tableName string) ([]string, 
 
 	var result []string
 	var tmp string
+	var scanErr error
 
-	for rows.Next() {
-		if scanErr := rows.Scan(&tmp); scanErr != nil {
-			return nil, scanErr
+	for rows.Next() && scanErr == nil {
+		if scanErr = rows.Scan(&tmp); scanErr == nil {
+			result = append(result, tmp)
 		}
-		result = append(result, tmp)
 	}
 
-	return result, nil
+	return result, errors.Join(rows.Err(), scanErr)
 }
 
 func (b BaseDialect) RegisterMigration(tx *sql.Tx, id string, tableName string) error {

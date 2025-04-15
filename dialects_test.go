@@ -138,7 +138,7 @@ func TestEnsureMigrationTableExistsCommitError(t *testing.T) {
 	if dbFileErr != nil {
 		t.Errorf("DB file could not be created: %v", dbFileErr)
 	} else {
-		// defer func() { _ = os.Remove(dbFile) }()
+		defer func() { _ = os.Remove(dbFile) }()
 	}
 
 	db, dbErr := sql.Open("sqlite", dbFile)

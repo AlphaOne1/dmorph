@@ -476,3 +476,117 @@ func TestMigrationRunInvalidApplied(t *testing.T) {
 
 	assert.Error(t, runErr, "morpher should not run")
 }
+
+// TestMigrationApplyInvalidDB verifies that applying migrations to an invalid or closed database results in an error.
+func TestMigrationApplyInvalidDB(t *testing.T) {
+	dbFile, dbFileErr := prepareDB()
+
+	if dbFileErr != nil {
+		t.Errorf("DB file could not be created: %v", dbFileErr)
+	} else {
+		defer func() { _ = os.Remove(dbFile) }()
+	}
+
+	db, dbErr := sql.Open("sqlite", dbFile)
+
+	if dbErr != nil {
+		t.Errorf("DB file could not be created: %v", dbErr)
+	} else {
+		_ = db.Close()
+	}
+
+	morpher, morpherErr := NewMorpher(
+		WithDialect(DialectSQLite()),
+		WithMigrationFromFile("testData/01_base_table.sql"))
+
+	assert.NoError(t, morpherErr, "morpher could not be created")
+
+	assert.Error(t,
+		morpher.applyMigrations(db, "irrelevant"),
+		"morpher should error on invalid DB")
+}
+
+// TestMigrationApplyUnableRegister tests the behavior when the migration registration fails due to an invalid template.
+func TestMigrationApplyUnableRegister(t *testing.T) {
+	dbFile, dbFileErr := prepareDB()
+
+	if dbFileErr != nil {
+		t.Errorf("DB file could not be created: %v", dbFileErr)
+	} else {
+		defer func() { _ = os.Remove(dbFile) }()
+	}
+
+	db, dbErr := sql.Open("sqlite", dbFile)
+
+	if dbErr != nil {
+		t.Errorf("DB file could not be created: %v", dbErr)
+	} else {
+		defer func() { _ = db.Close() }()
+	}
+
+	morpher, morpherErr := NewMorpher(
+		WithDialect(DialectSQLite()),
+		WithMigrationFromFile("testData/01_base_table.sql"))
+
+	assert.NoError(t, morpherErr, "morpher could not be created")
+
+	d, _ := morpher.Dialect.(BaseDialect)
+	d.RegisterTemplate = "utter nonsense"
+	morpher.Dialect = d
+
+	assert.Error(t,
+		morpher.applyMigrations(db, ""),
+		"morpher should fail to register")
+}
+
+// TestMigrationApplyUnableCommit tests the scenario where migration application fails
+// due to inability to commit a transaction.
+func TestMigrationApplyUnableCommit(t *testing.T) {
+	dbFile, dbFileErr := prepareDB()
+
+	if dbFileErr != nil {
+		t.Errorf("DB file could not be created: %v", dbFileErr)
+	} else {
+		defer func() { _ = os.Remove(dbFile) }()
+	}
+
+	db, dbErr := sql.Open("sqlite", dbFile)
+
+	if dbErr != nil {
+		t.Errorf("DB file could not be created: %v", dbErr)
+	} else {
+		defer func() { _ = db.Close() }()
+	}
+
+	morpher, morpherErr := NewMorpher(
+		WithDialect(DialectSQLite()),
+		WithMigrationFromFile("testData/01_base_table.sql"))
+
+	assert.NoError(t, morpherErr, "morpher could not be created")
+
+	_, execErr := db.Exec("PRAGMA foreign_keys = ON")
+	assert.NoError(t, execErr, "foreign keys checking could not be enabled")
+
+	d, _ := morpher.Dialect.(BaseDialect)
+	d.RegisterTemplate = `
+		CREATE TABLE t0 (
+			id INTEGER PRIMARY KEY
+		);
+
+		CREATE TABLE t1 (
+			id        INTEGER PRIMARY KEY,
+			parent_id INTEGER REFERENCES t0 (id) DEFERRABLE INITIALLY DEFERRED
+		);
+
+		INSERT INTO t0 (id)            VALUES (1);
+		INSERT INTO t1 (id, parent_id) VALUES (1, 1);
+
+		-- %s catching argument
+		DELETE FROM t0 WHERE id = 1;`
+
+	morpher.Dialect = d
+
+	assert.Error(t,
+		morpher.applyMigrations(db, ""),
+		"morpher should fail to register")
+}
