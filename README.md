@@ -113,7 +113,7 @@ management systems offer a rollback of DDL (CREATE, DROP, ...) statements.
 
 An example for a migration inside a file `01_base_tables` is as follows:
 
-```sqlite
+```sql
 CREATE TABLE tab0 (
     id string PRIMARY KEY
 )
