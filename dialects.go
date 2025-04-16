@@ -13,9 +13,9 @@ import (
 // queries. Defining the CreateTemplate, AppliedTemplate and RegisterTemplate enables the BaseDialect to
 // perform all the necessary operation to fulfill the Dialect interface.
 type BaseDialect struct {
-	CreateTemplate   string
-	AppliedTemplate  string
-	RegisterTemplate string
+	CreateTemplate   string // statement ensuring the existence of the migration table
+	AppliedTemplate  string // statement getting applied migrations ordered by application date
+	RegisterTemplate string // statement registering a migration
 }
 
 // EnsureMigrationTableExists ensures that the migration table, saving the applied migrations ids, exists.
