@@ -1,5 +1,5 @@
 <p align="center">
-    <!--<img src="dmorph_logo.svg" width="25%" alt="Logo"><br>-->
+    <img src="dmorph_logo.svg" width="40%" alt="Logo"><br>
     <a href="https://github.com/AlphaOne1/dmorph/actions/workflows/test.yml"
        rel="external"
        target="_blank">
