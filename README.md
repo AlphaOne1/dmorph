@@ -230,7 +230,7 @@ func migrate(db *sql.DB) error {
 }
 ```
 
-### New Database SQL Dialect
+### New SQL Dialect
 
 *DMorph* uses the Dialect interface to adapt to different database management systems:
 
@@ -247,9 +247,9 @@ above functions using a set of user supplied SQL statements:
 
 ```go
 type BaseDialect struct {
-    CreateTemplate   string
-    AppliedTemplate  string
-    RegisterTemplate string
+    CreateTemplate   string // statement ensuring the existence of the migration table
+    AppliedTemplate  string // statement getting applied migrations ordered by application date
+    RegisterTemplate string // statement registering a migration
 }
 ```
 
