@@ -72,6 +72,7 @@ necessary.
 
 Includes direct support for the following relational database management systems:
 
+* [CSVQ](https://mithrandie.github.io/csvq/)
 * [IBM Db2](https://www.ibm.com/db2/)
 * [Microsoft SQL Server](https://www.microsoft.com/sql-server)
 * [MySQL](https://www.mysql.com/) & [MariaDB](https://mariadb.org/)
@@ -107,7 +108,7 @@ A migration is a series of steps, defined either in an SQL file or programmatica
 A typical migration file consists of a sequence of SQL statements. Each statement needs to be
 finalized with a semicolon `;`. If a semicolon is found alone at the beginning of a line, all
 previous statements, that were not yet executed, are executed in one call to Exec in a
-transaction. A migration is executed completely inside of a transaction. If any of the steps of
+transaction. A migration is executed completely inside a transaction. If any of the steps of
 a migration fails, a rollback is issued and the process stops. Take care, that not all database
 management systems offer a rollback of DDL (CREATE, DROP, ...) statements.
 
@@ -216,7 +217,7 @@ func (m CustomMigration) Migrate(tx *sql.Tx) error {
 }
 ```
 
-Inside of the `Migrate` function the transaction state should not be modified.
+Inside the `Migrate` function the transaction state should not be modified.
 `Commit` and `Rollback` are handled by *DMorph* as needed. As seen in the example, a potentiel error
 is returned plain to the caller.
 
