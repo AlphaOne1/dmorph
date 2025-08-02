@@ -21,6 +21,7 @@ func TestDialectStatements(t *testing.T) {
 		name   string
 		caller func() BaseDialect
 	}{
+		{name: "CSVQ", caller: DialectCSVQ},
 		{name: "DB2", caller: DialectDB2},
 		{name: "MSSQL", caller: DialectMSSQL},
 		{name: "MySQL", caller: DialectMySQL},
