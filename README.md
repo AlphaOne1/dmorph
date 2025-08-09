@@ -186,7 +186,7 @@ func migrate(db *sql.DB) error {
 
     if subErr != nil {
         return subErr
-	}
+    }
 
     return dmorph.Run(db,
         dmorph.WithDialect(dmorph.DialectSQLite()),
