@@ -1,7 +1,7 @@
 // Copyright the DMorph contributors.
 // SPDX-License-Identifier: MPL-2.0
 
-package dmorph
+package dmorph_test
 
 import (
 	"bytes"
@@ -12,6 +12,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/AlphaOne1/dmorph"
 )
 
 func TestWithMigrationFromFile(t *testing.T) {
@@ -31,9 +33,9 @@ func TestWithMigrationFromFile(t *testing.T) {
 		defer func() { _ = db.Close() }()
 	}
 
-	runErr := Run(db,
-		WithDialect(DialectSQLite()),
-		WithMigrationFromFile("testData/01_base_table.sql"))
+	runErr := dmorph.Run(db,
+		dmorph.WithDialect(dmorph.DialectSQLite()),
+		dmorph.WithMigrationFromFile("testData/01_base_table.sql"))
 
 	assert.NoError(t, runErr, "did not expect an error")
 }
@@ -55,21 +57,22 @@ func TestWithMigrationFromFileError(t *testing.T) {
 		defer func() { _ = db.Close() }()
 	}
 
-	runErr := Run(db,
-		WithDialect(DialectSQLite()),
-		WithMigrationFromFile("testData/00_non_existent.sql"))
+	runErr := dmorph.Run(db,
+		dmorph.WithDialect(dmorph.DialectSQLite()),
+		dmorph.WithMigrationFromFile("testData/00_non_existent.sql"))
 
 	var pathErr *fs.PathError
 	assert.ErrorAs(t, runErr, &pathErr, "unexpected error")
 }
 
-// TestMigrationFromFileFSError validates that migrationFromFileFS returns an error when the specified file does not exist.
+// TestMigrationFromFileFSError validates that migrationFromFileFS returns an error
+// when the specified file does not exist.
 func TestMigrationFromFileFSError(t *testing.T) {
 	dir, dirErr := os.OpenRoot("testData")
 
 	assert.NoError(t, dirErr, "could not open test data directory")
 
-	mig := migrationFromFileFS("nonexistent", dir.FS(), slog.Default())
+	mig := dmorph.TmigrationFromFileFS("nonexistent", dir.FS(), slog.Default())
 
 	err := mig.Migrate(nil)
 
@@ -101,7 +104,7 @@ func TestApplyStepsStreamError(t *testing.T) {
 
 	assert.NoError(t, txErr, "expected no tx error")
 
-	err := applyStepsStream(tx, &buf, "test", slog.Default())
+	err := dmorph.TapplyStepsStream(tx, &buf, "test", slog.Default())
 
 	assert.Error(t, err, "expected error")
 
@@ -114,7 +117,7 @@ func TestApplyStepsStreamError(t *testing.T) {
 	buf.Reset()
 	buf.WriteString("utter nonsense\n;")
 
-	err = applyStepsStream(tx, &buf, "test", slog.Default())
+	err = dmorph.TapplyStepsStream(tx, &buf, "test", slog.Default())
 
 	assert.Error(t, err, "expected error")
 

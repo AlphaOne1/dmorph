@@ -19,29 +19,29 @@ const MigrationTableName = "migrations"
 // ValidTableNameRex is the regular expression used to check if a given migration table name is valid.
 var ValidTableNameRex = regexp.MustCompile("^[a-zA-Z0-9_]+$")
 
-// ErrMigrationsUnrelated signalizes, that the set of migrations to apply and the already applied set do not have the
+// ErrMigrationsUnrelated signalizes that the set of migrations to apply and the already applied set do not have the
 // same (order of) applied migrations. Applying unrelated migrations could severely harm the database.
 var ErrMigrationsUnrelated = errors.New("migrations unrelated")
 
-// ErrMigrationsUnsorted tells that the already applied migrations were not registered in the order (using the timestamp)
-// that they should have been registered (using their id)
+// ErrMigrationsUnsorted tells that the already applied migrations were not registered in the order
+// (using the timestamp) that they should have been registered (using their id).
 var ErrMigrationsUnsorted = errors.New("migrations unsorted")
 
 // ErrNoDialect signalizes that no dialect for the database operations was chosen.
 var ErrNoDialect = errors.New("no dialect")
 
-// ErrNoMigrations signalizes that no migrations were chosen to be applied
+// ErrNoMigrations signalizes that no migrations were chosen to be applied.
 var ErrNoMigrations = errors.New("no migrations")
 
-// ErrNoMigrationTable occurs if there is not migration table present
+// ErrNoMigrationTable occurs if there is no migration table present.
 var ErrNoMigrationTable = errors.New("no migration table")
 
-// ErrMigrationTableNameInvalid occurs if the migration table does not adhere to ValidTableNameRex
+// ErrMigrationTableNameInvalid occurs if the migration table does not adhere to ValidTableNameRex.
 var ErrMigrationTableNameInvalid = errors.New("invalid migration table name")
 
 // ErrMigrationsTooOld signalizes that the migrations to be applied are older than the migrations that are already
 // present in the database. This error can occur when an older version of the application is started using a database
-// that was used already by a newer version of the application.
+// used already by a newer version of the application.
 var ErrMigrationsTooOld = errors.New("migrations too old")
 
 // Dialect is an interface describing the functionalities needed to manage migrations inside a database.
@@ -80,10 +80,11 @@ type Morpher struct {
 // MorphOption is the type used for functional options.
 type MorphOption func(*Morpher) error
 
-// WithDialect sets the vendor specific database dialect to be used.
+// WithDialect sets the vendor-specific database dialect to be used.
 func WithDialect(dialect Dialect) MorphOption {
 	return func(m *Morpher) error {
 		m.Dialect = dialect
+
 		return nil
 	}
 }
@@ -92,6 +93,7 @@ func WithDialect(dialect Dialect) MorphOption {
 func WithMigrations(migrations ...Migration) MorphOption {
 	return func(m *Morpher) error {
 		m.Migrations = append(m.Migrations, migrations...)
+
 		return nil
 	}
 }
@@ -101,6 +103,7 @@ func WithMigrations(migrations ...Migration) MorphOption {
 func WithLog(log *slog.Logger) MorphOption {
 	return func(m *Morpher) error {
 		m.Log = log
+
 		return nil
 	}
 }
@@ -118,6 +121,7 @@ func WithTableName(tableName string) func(*Morpher) error {
 		}
 
 		m.TableName = tableName
+
 		return nil
 	}
 }
@@ -213,6 +217,7 @@ func (m *Morpher) applyMigrations(db *sql.DB, lastMigration string) error {
 	for _, migration := range m.Migrations {
 		if lastMigration >= migration.Key() {
 			m.Log.Info("migration already applied", slog.String("file", migration.Key()))
+
 			continue
 		}
 
@@ -224,23 +229,26 @@ func (m *Morpher) applyMigrations(db *sql.DB, lastMigration string) error {
 			return txBeginErr
 		}
 
-		// even if we are sure to catch all possibilities, we use this as a safeguard that also with later
-		// modifications, if a successful commit cannot be done, at least the rollback is executed freeing
+		// Even if we are sure to catch all possibilities, we use this as a safeguard that also with later
+		// modifications. When a successful commit cannot be done, at least the rollback is executed, freeing
 		// allocated resources of the transaction.
 		defer func() { _ = tx.Rollback() }()
 
 		if err := migration.Migrate(tx); err != nil {
 			rollbackErr := tx.Rollback()
+
 			return errors.Join(err, rollbackErr)
 		}
 
 		if registerErr := m.Dialect.RegisterMigration(tx, migration.Key(), m.TableName); registerErr != nil {
 			rollbackErr := tx.Rollback()
+
 			return errors.Join(registerErr, rollbackErr)
 		}
 
 		if commitErr := tx.Commit(); commitErr != nil {
 			rollbackErr := tx.Rollback()
+
 			return errors.Join(commitErr, rollbackErr)
 		}
 		m.Log.Info("migration applied",
@@ -248,6 +256,7 @@ func (m *Morpher) applyMigrations(db *sql.DB, lastMigration string) error {
 			slog.Duration("duration", time.Since(startMigration)),
 		)
 	}
+
 	return nil
 }
 
@@ -256,6 +265,7 @@ func (m *Morpher) applyMigrations(db *sql.DB, lastMigration string) error {
 func (m *Morpher) checkAppliedMigrations(appliedMigrations []string) error {
 	if !slices.IsSorted(appliedMigrations) {
 		m.Log.Error("migrations not applied in order")
+
 		return ErrMigrationsUnsorted
 	}
 
@@ -265,16 +275,17 @@ func (m *Morpher) checkAppliedMigrations(appliedMigrations []string) error {
 
 	if len(m.Migrations) < len(appliedMigrations) {
 		// it is impossible to have a migration newer than the one already applied
-		// without having at least the same amount of previous migrations
+		// without having at least the same number of previous migrations
 		return ErrMigrationsUnrelated
 	}
 
-	// we know here, that there are at least as many migrations applied as we got to apply
+	// we know here that there are at least as many migrations applied as we got to apply
 	for i := 0; i < len(appliedMigrations); i++ {
 		if appliedMigrations[i] != m.Migrations[i].Key() {
 			return ErrMigrationsUnrelated
 		}
 	}
+
 	return nil
 }
 

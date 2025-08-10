@@ -11,7 +11,7 @@ import (
 
 // BaseDialect is a convenience type for databases that manage the necessary operations solely using
 // queries. Defining the CreateTemplate, AppliedTemplate and RegisterTemplate enables the BaseDialect to
-// perform all the necessary operation to fulfill the Dialect interface.
+// perform all the necessary operations to fulfill the Dialect interface.
 type BaseDialect struct {
 	CreateTemplate   string // statement ensuring the existence of the migration table
 	AppliedTemplate  string // statement getting applied migrations ordered by application date
@@ -32,11 +32,13 @@ func (b BaseDialect) EnsureMigrationTableExists(db *sql.DB, tableName string) er
 
 	if execErr != nil {
 		rollbackErr := tx.Rollback()
+
 		return errors.Join(execErr, rollbackErr)
 	}
 
 	if err := tx.Commit(); err != nil {
 		rollbackErr := tx.Rollback()
+
 		return errors.Join(err, rollbackErr)
 	}
 

@@ -72,6 +72,7 @@ func WithMigrationsFromFS(d fs.ReadDirFS) MorphOption {
 		if err == nil {
 			for _, entry := range dirEntry {
 				morpher.Log.Info("entry", slog.String("name", entry.Name()))
+
 				if entry.Type().IsRegular() {
 					morpher.Migrations = append(morpher.Migrations,
 						migrationFromFileFS(entry.Name(), d, morpher.Log))
@@ -83,7 +84,7 @@ func WithMigrationsFromFS(d fs.ReadDirFS) MorphOption {
 	}
 }
 
-// migrationFromFileFS creates a FileMigration instance for a specific migration file from an fs.FS directory.
+// migrationFromFileFS creates a FileMigration instance for a specific migration file from a fs.FS directory.
 func migrationFromFileFS(name string, dir fs.FS, log *slog.Logger) FileMigration {
 	return FileMigration{
 		Name: name,
@@ -105,8 +106,8 @@ func migrationFromFileFS(name string, dir fs.FS, log *slog.Logger) FileMigration
 // applyStepsStream executes database migration steps read from an io.Reader, separated by semicolons, in a transaction.
 // Returns the corresponding error if any step execution fails. Also, as some database drivers or engines seem to not
 // support comments, leading comments are removed. This function does not undertake efforts to scan the SQL to find
-// other comments. So leading comments telling what a step is going to do, work. But comments in the middle of a
-// statement will not be removed. At least with SQLite this will lead to hard to find errors.
+// other comments. Such leading comments telling what a step is going to do, work. But comments in the middle of a
+// statement will not be removed. At least with SQLite this will lead to hard-to-find errors.
 func applyStepsStream(tx *sql.Tx, r io.Reader, id string, log *slog.Logger) error {
 	buf := bytes.Buffer{}
 
@@ -138,7 +139,7 @@ func applyStepsStream(tx *sql.Tx, r io.Reader, id string, log *slog.Logger) erro
 		}
 	}
 
-	// cleanup after, for final statement without the closing ; on a new line
+	// cleanup after, for the final statement without the closing `;` on a new line
 	if buf.Len() > 0 {
 		log.Info("migration step",
 			slog.String("id", id),
