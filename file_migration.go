@@ -109,9 +109,13 @@ func migrationFromFileFS(name string, dir fs.FS, log *slog.Logger) FileMigration
 // other comments. Such leading comments telling what a step is going to do, work. But comments in the middle of a
 // statement will not be removed. At least with SQLite this will lead to hard-to-find errors.
 func applyStepsStream(tx *sql.Tx, r io.Reader, id string, log *slog.Logger) error {
+	const InitialScannerBufSize = 64 * 1024
+	const MaxScannerBufSize = 1024 * 1024
+
 	buf := bytes.Buffer{}
 
 	scanner := bufio.NewScanner(r)
+	scanner.Buffer(make([]byte, 0, InitialScannerBufSize), MaxScannerBufSize)
 	newStep := true
 	var i int
 

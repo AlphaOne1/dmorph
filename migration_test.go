@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	_ "modernc.org/sqlite"
 
 	"github.com/AlphaOne1/dmorph"
@@ -163,13 +164,13 @@ func TestMigrationTooOld(t *testing.T) {
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
 
-	assert.NoError(t, migrationsDirErr, "migrations directory could not be opened")
+	require.NoError(t, migrationsDirErr, "migrations directory could not be opened")
 
 	runErr := dmorph.Run(db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationsFromFS(migrationsDir.(fs.ReadDirFS)))
 
-	assert.NoError(t, runErr, "preparation migrations could not be run")
+	require.NoError(t, runErr, "preparation migrations could not be run")
 
 	runErr = dmorph.Run(db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
@@ -535,7 +536,7 @@ func TestMigrationApplyInvalidDB(t *testing.T) {
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationFromFile("testData/01_base_table.sql"))
 
-	assert.NoError(t, morpherErr, "morpher could not be created")
+	require.NoError(t, morpherErr, "morpher could not be created")
 
 	assert.Error(t,
 		morpher.TapplyMigrations(db, "irrelevant"),
@@ -564,9 +565,11 @@ func TestMigrationApplyUnableRegister(t *testing.T) {
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationFromFile("testData/01_base_table.sql"))
 
-	assert.NoError(t, morpherErr, "morpher could not be created")
+	require.NoError(t, morpherErr, "morpher could not be created")
 
-	d, _ := morpher.Dialect.(dmorph.BaseDialect)
+	d, dialectOK := morpher.Dialect.(dmorph.BaseDialect)
+	require.True(t, dialectOK, "dialect is not a BaseDialect")
+
 	d.RegisterTemplate = "utter nonsense"
 	morpher.Dialect = d
 
@@ -598,12 +601,14 @@ func TestMigrationApplyUnableCommit(t *testing.T) {
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationFromFile("testData/01_base_table.sql"))
 
-	assert.NoError(t, morpherErr, "morpher could not be created")
+	require.NoError(t, morpherErr, "morpher could not be created")
 
 	_, execErr := db.Exec("PRAGMA foreign_keys = ON")
-	assert.NoError(t, execErr, "foreign keys checking could not be enabled")
+	require.NoError(t, execErr, "foreign keys checking could not be enabled")
 
-	d, _ := morpher.Dialect.(dmorph.BaseDialect)
+	d, dialectOK := morpher.Dialect.(dmorph.BaseDialect)
+	require.True(t, dialectOK, "dialect is not a BaseDialect")
+
 	d.RegisterTemplate = `
 		CREATE TABLE t0 (
 			id INTEGER PRIMARY KEY

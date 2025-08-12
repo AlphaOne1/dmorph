@@ -53,17 +53,14 @@ linters:
                         - "!**/examples/**/*"
                     allow:
                         - $gostd
-                        - gopkg.in/yaml.v3
-                        - github.com/Masterminds/sprig/v3
                 test:
                     files:
                         - $test
                         - "**/examples/**/*"
                     allow:
                         - $gostd
-                        - gopkg.in/yaml.v3
-                        - github.com/Masterminds/sprig/v3
                         - github.com/stretchr/testify/assert
+                        - github.com/stretchr/testify/require
                         - github.com/AlphaOne1/dmorph
                         - modernc.org/sqlite
 

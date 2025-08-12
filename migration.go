@@ -280,7 +280,7 @@ func (m *Morpher) checkAppliedMigrations(appliedMigrations []string) error {
 	}
 
 	// we know here that there are at least as many migrations applied as we got to apply
-	for i := 0; i < len(appliedMigrations); i++ {
+	for i := range appliedMigrations {
 		if appliedMigrations[i] != m.Migrations[i].Key() {
 			return ErrMigrationsUnrelated
 		}

@@ -89,7 +89,7 @@ func TestCallsOnClosedDB(t *testing.T) {
 // TestEnsureMigrationTableExistsSQLError tests the EnsureMigrationTableExists function
 // for handling SQL errors during execution.
 func TestEnsureMigrationTableExistsSQLError(t *testing.T) {
-	d := dmorph.BaseDialect{
+	dialect := dmorph.BaseDialect{
 		CreateTemplate: `
             CRATE TABLE test (
                 id        VARCHAR(255) PRIMARY KEY,
@@ -113,7 +113,7 @@ func TestEnsureMigrationTableExistsSQLError(t *testing.T) {
 		defer func() { _ = db.Close() }()
 	}
 
-	assert.Error(t, d.EnsureMigrationTableExists(db, "test"), "expected error")
+	assert.Error(t, dialect.EnsureMigrationTableExists(db, "test"), "expected error")
 }
 
 // TestEnsureMigrationTableExistsCommitError tests the behavior of EnsureMigrationTableExists

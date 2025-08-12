@@ -26,11 +26,7 @@ func (b BaseDialect) EnsureMigrationTableExists(db *sql.DB, tableName string) er
 		return err
 	}
 
-	defer func() { _ = tx.Rollback() }()
-
-	_, execErr := tx.Exec(fmt.Sprintf(b.CreateTemplate, tableName))
-
-	if execErr != nil {
+	if _, execErr := tx.Exec(fmt.Sprintf(b.CreateTemplate, tableName)); execErr != nil {
 		rollbackErr := tx.Rollback()
 
 		return errors.Join(execErr, rollbackErr)
