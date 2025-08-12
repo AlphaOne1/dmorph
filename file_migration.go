@@ -120,14 +120,14 @@ func applyStepsStream(tx *sql.Tx, r io.Reader, id string, log *slog.Logger) erro
 	var i int
 
 	for i = 0; scanner.Scan(); {
-		buf.Write(scanner.Bytes())
-
 		if newStep && strings.HasPrefix(scanner.Text(), "--") {
 			// skip leading comments
 			continue
 		}
 
 		newStep = false
+
+		buf.Write(scanner.Bytes())
 
 		if scanner.Text() == ";" {
 			log.Info("migration step",

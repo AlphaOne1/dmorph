@@ -58,11 +58,12 @@ func TestMigration(t *testing.T) {
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
 
-	assert.NoError(t, migrationsDirErr, "migrations directory could not be opened")
+	require.NoError(t, migrationsDirErr, "migrations directory could not be opened")
 
 	runErr := dmorph.Run(db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationsFromFS(migrationsDir.(fs.ReadDirFS)))
+		dmorph.WithMigrationsFromFS(
+			migrationsDir.(fs.ReadDirFS))) // Safe: migrationDir guaranteed to implement fs.ReadDirFS
 
 	assert.NoError(t, runErr, "migrations could not be run")
 }
@@ -97,7 +98,8 @@ func TestMigrationUpdate(t *testing.T) {
 
 	runErr = dmorph.Run(db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationsFromFS(migrationsDir.(fs.ReadDirFS)))
+		dmorph.WithMigrationsFromFS(
+			migrationsDir.(fs.ReadDirFS))) // Safe: migrationDir guaranteed to implement fs.ReadDirFS
 
 	assert.NoError(t, runErr, "migrations could not be run")
 }
