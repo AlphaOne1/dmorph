@@ -4,6 +4,7 @@
 package dmorph_test
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"regexp"
@@ -79,10 +80,10 @@ func TestCallsOnClosedDB(t *testing.T) {
 	}
 
 	assert.Error(t,
-		dmorph.DialectSQLite().EnsureMigrationTableExists(db, "irrelevant"),
+		dmorph.DialectSQLite().EnsureMigrationTableExists(context.Background(), db, "irrelevant"),
 		"expected error on closed database")
 
-	_, err := dmorph.DialectSQLite().AppliedMigrations(db, "irrelevant")
+	_, err := dmorph.DialectSQLite().AppliedMigrations(context.Background(), db, "irrelevant")
 	assert.Error(t, err, "expected error on closed database")
 }
 
@@ -113,7 +114,7 @@ func TestEnsureMigrationTableExistsSQLError(t *testing.T) {
 		defer func() { _ = db.Close() }()
 	}
 
-	assert.Error(t, dialect.EnsureMigrationTableExists(db, "test"), "expected error")
+	assert.Error(t, dialect.EnsureMigrationTableExists(context.Background(), db, "test"), "expected error")
 }
 
 // TestEnsureMigrationTableExistsCommitError tests the behavior of EnsureMigrationTableExists
@@ -157,5 +158,5 @@ func TestEnsureMigrationTableExistsCommitError(t *testing.T) {
 
 	assert.NoError(t, execErr, "foreign keys checking could not be enabled")
 
-	assert.Error(t, d.EnsureMigrationTableExists(db, "test"), "expected error")
+	assert.Error(t, d.EnsureMigrationTableExists(context.Background(), db, "test"), "expected error")
 }

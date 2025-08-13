@@ -4,6 +4,7 @@
 package dmorph
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -19,8 +20,8 @@ type BaseDialect struct {
 }
 
 // EnsureMigrationTableExists ensures that the migration table, saving the applied migrations ids, exists.
-func (b BaseDialect) EnsureMigrationTableExists(db *sql.DB, tableName string) error {
-	tx, err := db.Begin()
+func (b BaseDialect) EnsureMigrationTableExists(ctx context.Context, db *sql.DB, tableName string) error {
+	tx, err := db.BeginTx(ctx, nil)
 
 	if err != nil {
 		return err
@@ -33,7 +34,7 @@ func (b BaseDialect) EnsureMigrationTableExists(db *sql.DB, tableName string) er
 		}
 	}()
 
-	if _, execErr := tx.Exec(fmt.Sprintf(b.CreateTemplate, tableName)); execErr != nil {
+	if _, execErr := tx.ExecContext(ctx, fmt.Sprintf(b.CreateTemplate, tableName)); execErr != nil {
 		rollbackErr := tx.Rollback()
 		tx = nil
 
@@ -53,8 +54,8 @@ func (b BaseDialect) EnsureMigrationTableExists(db *sql.DB, tableName string) er
 }
 
 // AppliedMigrations gets the already applied migrations from the database, ordered by application date.
-func (b BaseDialect) AppliedMigrations(db *sql.DB, tableName string) ([]string, error) {
-	rows, rowsErr := db.Query(fmt.Sprintf(b.AppliedTemplate, tableName))
+func (b BaseDialect) AppliedMigrations(ctx context.Context, db *sql.DB, tableName string) ([]string, error) {
+	rows, rowsErr := db.QueryContext(ctx, fmt.Sprintf(b.AppliedTemplate, tableName))
 
 	if rowsErr != nil {
 		return nil, rowsErr
@@ -76,8 +77,8 @@ func (b BaseDialect) AppliedMigrations(db *sql.DB, tableName string) ([]string, 
 }
 
 // RegisterMigration registers a migration in the migration table.
-func (b BaseDialect) RegisterMigration(tx *sql.Tx, id string, tableName string) error {
-	_, err := tx.Exec(fmt.Sprintf(b.RegisterTemplate, tableName),
+func (b BaseDialect) RegisterMigration(ctx context.Context, tx *sql.Tx, id string, tableName string) error {
+	_, err := tx.ExecContext(ctx, fmt.Sprintf(b.RegisterTemplate, tableName),
 		sql.Named("id", id))
 
 	return err

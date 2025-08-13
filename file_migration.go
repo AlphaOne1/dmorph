@@ -6,6 +6,7 @@ package dmorph
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"database/sql"
 	"io"
 	"io/fs"
@@ -18,7 +19,7 @@ import (
 type FileMigration struct {
 	Name          string
 	FS            fs.FS
-	migrationFunc func(tx *sql.Tx, migration string) error
+	migrationFunc func(ctx context.Context, tx *sql.Tx, migration string) error
 }
 
 // Key returns the key of the migration to register in the migration table.
@@ -27,8 +28,8 @@ func (f FileMigration) Key() string {
 }
 
 // Migrate executes the migration on the given transaction.
-func (f FileMigration) Migrate(tx *sql.Tx) error {
-	return f.migrationFunc(tx, f.Name)
+func (f FileMigration) Migrate(ctx context.Context, tx *sql.Tx) error {
+	return f.migrationFunc(ctx, tx, f.Name)
 }
 
 // WithMigrationFromFile generates a FileMigration that will run the content of the given file.
@@ -36,7 +37,7 @@ func WithMigrationFromFile(name string) MorphOption {
 	return func(morpher *Morpher) error {
 		morpher.Migrations = append(morpher.Migrations, FileMigration{
 			Name: name,
-			migrationFunc: func(tx *sql.Tx, migration string) error {
+			migrationFunc: func(ctx context.Context, tx *sql.Tx, migration string) error {
 				m, mErr := os.Open(migration)
 
 				if mErr != nil {
@@ -45,7 +46,7 @@ func WithMigrationFromFile(name string) MorphOption {
 
 				defer func() { _ = m.Close() }()
 
-				return applyStepsStream(tx, m, migration, morpher.Log)
+				return applyStepsStream(ctx, tx, m, migration, morpher.Log)
 			},
 		})
 
@@ -89,7 +90,7 @@ func migrationFromFileFS(name string, dir fs.FS, log *slog.Logger) FileMigration
 	return FileMigration{
 		Name: name,
 		FS:   dir,
-		migrationFunc: func(tx *sql.Tx, migration string) error {
+		migrationFunc: func(ctx context.Context, tx *sql.Tx, migration string) error {
 			m, mErr := dir.Open(migration)
 
 			if mErr != nil {
@@ -98,7 +99,7 @@ func migrationFromFileFS(name string, dir fs.FS, log *slog.Logger) FileMigration
 
 			defer func() { _ = m.Close() }()
 
-			return applyStepsStream(tx, m, migration, log)
+			return applyStepsStream(ctx, tx, m, migration, log)
 		},
 	}
 }
@@ -108,7 +109,7 @@ func migrationFromFileFS(name string, dir fs.FS, log *slog.Logger) FileMigration
 // support comments, leading comments are removed. This function does not undertake efforts to scan the SQL to find
 // other comments. Such leading comments telling what a step is going to do, work. But comments in the middle of a
 // statement will not be removed. At least with SQLite this will lead to hard-to-find errors.
-func applyStepsStream(tx *sql.Tx, r io.Reader, id string, log *slog.Logger) error {
+func applyStepsStream(ctx context.Context, tx *sql.Tx, r io.Reader, id string, log *slog.Logger) error {
 	const InitialScannerBufSize = 64 * 1024
 	const MaxScannerBufSize = 1024 * 1024
 
@@ -117,40 +118,48 @@ func applyStepsStream(tx *sql.Tx, r io.Reader, id string, log *slog.Logger) erro
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, InitialScannerBufSize), MaxScannerBufSize)
 	newStep := true
-	var i int
+	var step int
 
-	for i = 0; scanner.Scan(); {
+	for step = 0; scanner.Scan(); {
 		if newStep && strings.HasPrefix(scanner.Text(), "--") {
 			// skip leading comments
 			continue
 		}
 
-		newStep = false
-
-		buf.Write(scanner.Bytes())
-
 		if scanner.Text() == ";" {
 			log.Info("migration step",
 				slog.String("id", id),
-				slog.Int("step", i),
+				slog.Int("step", step),
 			)
-			if _, err := tx.Exec(buf.String()); err != nil {
+
+			if _, err := tx.ExecContext(ctx, buf.String()); err != nil {
 				return err
 			}
 
 			buf.Reset()
-			i++
+			newStep = true
+			step++
+
+			continue
 		}
+
+		// Append the current line (preserve formatting by adding a newline between lines)
+		if buf.Len() > 0 {
+			buf.WriteByte('\n')
+		}
+
+		buf.Write(scanner.Bytes())
+		newStep = false
 	}
 
 	// cleanup after, for the final statement without the closing `;` on a new line
 	if buf.Len() > 0 {
 		log.Info("migration step",
 			slog.String("id", id),
-			slog.Int("step", i),
+			slog.Int("step", step),
 		)
 
-		if _, err := tx.Exec(buf.String()); err != nil {
+		if _, err := tx.ExecContext(ctx, buf.String()); err != nil {
 			return err
 		}
 	}

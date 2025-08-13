@@ -4,6 +4,7 @@
 package dmorph
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -46,15 +47,15 @@ var ErrMigrationsTooOld = errors.New("migrations too old")
 
 // Dialect is an interface describing the functionalities needed to manage migrations inside a database.
 type Dialect interface {
-	EnsureMigrationTableExists(db *sql.DB, tableName string) error
-	AppliedMigrations(db *sql.DB, tableName string) ([]string, error)
-	RegisterMigration(tx *sql.Tx, id string, tableName string) error
+	EnsureMigrationTableExists(ctx context.Context, db *sql.DB, tableName string) error
+	AppliedMigrations(ctx context.Context, db *sql.DB, tableName string) ([]string, error)
+	RegisterMigration(ctx context.Context, tx *sql.Tx, id string, tableName string) error
 }
 
 // Migration is an interface to provide abstract information about the migration at hand.
 type Migration interface {
-	Key() string              // identifier, used for ordering
-	Migrate(tx *sql.Tx) error // migration functionality
+	Key() string                                   // identifier, used for ordering
+	Migrate(ctx context.Context, tx *sql.Tx) error // migration functionality
 }
 
 // migrationOrder is used to order Migration instances.
@@ -174,16 +175,16 @@ func (m *Morpher) IsValid() error {
 // returned.
 // Run will run each migration in a separate transaction, with the last step to register the
 // migration in the migration table.
-func (m *Morpher) Run(db *sql.DB) error {
+func (m *Morpher) Run(ctx context.Context, db *sql.DB) error {
 	if validErr := m.IsValid(); validErr != nil {
 		return validErr
 	}
 
-	if err := m.Dialect.EnsureMigrationTableExists(db, m.TableName); err != nil {
+	if err := m.Dialect.EnsureMigrationTableExists(ctx, db, m.TableName); err != nil {
 		return fmt.Errorf("could not create migration table: %w", err)
 	}
 
-	appliedMigrations, appliedMigrationsErr := m.Dialect.AppliedMigrations(db, m.TableName)
+	appliedMigrations, appliedMigrationsErr := m.Dialect.AppliedMigrations(ctx, db, m.TableName)
 
 	if appliedMigrationsErr != nil {
 		return fmt.Errorf("could not get applied migrations: %w", appliedMigrationsErr)
@@ -206,12 +207,12 @@ func (m *Morpher) Run(db *sql.DB) error {
 		lastMigration = appliedMigrations[len(appliedMigrations)-1]
 	}
 
-	return m.applyMigrations(db, lastMigration)
+	return m.applyMigrations(ctx, db, lastMigration)
 }
 
 // applyMigrations applies the given migrations to the database.
 // This method does not check for the validity or consistency of the database.
-func (m *Morpher) applyMigrations(db *sql.DB, lastMigration string) error {
+func (m *Morpher) applyMigrations(ctx context.Context, db *sql.DB, lastMigration string) error {
 	var startMigration time.Time
 
 	for _, migration := range m.Migrations {
@@ -234,13 +235,13 @@ func (m *Morpher) applyMigrations(db *sql.DB, lastMigration string) error {
 		// allocated resources of the transaction.
 		defer func() { _ = tx.Rollback() }()
 
-		if err := migration.Migrate(tx); err != nil {
+		if err := migration.Migrate(ctx, tx); err != nil {
 			rollbackErr := tx.Rollback()
 
 			return errors.Join(err, rollbackErr)
 		}
 
-		if registerErr := m.Dialect.RegisterMigration(tx, migration.Key(), m.TableName); registerErr != nil {
+		if registerErr := m.Dialect.RegisterMigration(ctx, tx, migration.Key(), m.TableName); registerErr != nil {
 			rollbackErr := tx.Rollback()
 
 			return errors.Join(registerErr, rollbackErr)
@@ -291,12 +292,12 @@ func (m *Morpher) checkAppliedMigrations(appliedMigrations []string) error {
 
 // Run is a convenience function to easily get the migration job done. For more control use the
 // Morpher directly.
-func Run(db *sql.DB, options ...MorphOption) error {
+func Run(ctx context.Context, db *sql.DB, options ...MorphOption) error {
 	m, morphErr := NewMorpher(options...)
 
 	if morphErr != nil {
 		return morphErr
 	}
 
-	return m.Run(db)
+	return m.Run(ctx, db)
 }

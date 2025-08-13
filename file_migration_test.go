@@ -5,6 +5,7 @@ package dmorph_test
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"io/fs"
 	"log/slog"
@@ -33,7 +34,8 @@ func TestWithMigrationFromFile(t *testing.T) {
 		defer func() { _ = db.Close() }()
 	}
 
-	runErr := dmorph.Run(db,
+	runErr := dmorph.Run(context.Background(),
+		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationFromFile("testData/01_base_table.sql"))
 
@@ -57,7 +59,8 @@ func TestWithMigrationFromFileError(t *testing.T) {
 		defer func() { _ = db.Close() }()
 	}
 
-	runErr := dmorph.Run(db,
+	runErr := dmorph.Run(context.Background(),
+		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationFromFile("testData/00_non_existent.sql"))
 
@@ -74,7 +77,7 @@ func TestMigrationFromFileFSError(t *testing.T) {
 
 	mig := dmorph.TmigrationFromFileFS("nonexistent", dir.FS(), slog.Default())
 
-	err := mig.Migrate(nil)
+	err := mig.Migrate(context.Background(), nil)
 
 	assert.Error(t, err, "expected error")
 }
@@ -104,7 +107,7 @@ func TestApplyStepsStreamError(t *testing.T) {
 
 	assert.NoError(t, txErr, "expected no tx error")
 
-	err := dmorph.TapplyStepsStream(tx, &buf, "test", slog.Default())
+	err := dmorph.TapplyStepsStream(context.Background(), tx, &buf, "test", slog.Default())
 
 	assert.Error(t, err, "expected error")
 
@@ -117,7 +120,7 @@ func TestApplyStepsStreamError(t *testing.T) {
 	buf.Reset()
 	buf.WriteString("utter nonsense\n;")
 
-	err = dmorph.TapplyStepsStream(tx, &buf, "test", slog.Default())
+	err = dmorph.TapplyStepsStream(context.Background(), tx, &buf, "test", slog.Default())
 
 	assert.Error(t, err, "expected error")
 
