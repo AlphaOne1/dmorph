@@ -61,6 +61,7 @@ func TestDialectStatements(t *testing.T) {
 // TestCallsOnClosedDB verifies that methods fail as expected when called on a closed database connection.
 func TestCallsOnClosedDB(t *testing.T) {
 	db, _ := openTempSQLite(t)
+	db.Close()
 
 	assert.Error(t,
 		dmorph.DialectSQLite().EnsureMigrationTableExists(t.Context(), db, "irrelevant"),
