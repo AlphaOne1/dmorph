@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"fmt"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -74,7 +75,7 @@ func WithMigrationsFromFS(d fs.FS) MorphOption {
 			for _, entry := range dirEntry {
 				morpher.Log.Info("entry", slog.String("name", entry.Name()))
 
-				if entry.Type().IsRegular() {
+				if entry.Type().IsRegular() && strings.HasSuffix(entry.Name(), ".sql") {
 					morpher.Migrations = append(morpher.Migrations,
 						migrationFromFileFS(entry.Name(), d, morpher.Log))
 				}
@@ -109,7 +110,7 @@ func migrationFromFileFS(name string, dir fs.FS, log *slog.Logger) FileMigration
 // support comments, leading comments are removed. This function does not undertake efforts to scan the SQL to find
 // other comments. Such leading comments telling what a step is going to do, work. But comments in the middle of a
 // statement will not be removed. At least with SQLite this will lead to hard-to-find errors.
-func applyStepsStream(ctx context.Context, tx *sql.Tx, r io.Reader, id string, log *slog.Logger) error {
+func applyStepsStream(ctx context.Context, tx *sql.Tx, r io.Reader, migrationID string, log *slog.Logger) error {
 	const InitialScannerBufSize = 64 * 1024
 	const MaxScannerBufSize = 1024 * 1024
 
@@ -128,12 +129,12 @@ func applyStepsStream(ctx context.Context, tx *sql.Tx, r io.Reader, id string, l
 
 		if scanner.Text() == ";" {
 			log.Info("migration step",
-				slog.String("id", id),
+				slog.String("migrationID", migrationID),
 				slog.Int("step", step),
 			)
 
 			if _, err := tx.ExecContext(ctx, buf.String()); err != nil {
-				return err
+				return fmt.Errorf("apply migration %q step %d: %w", migrationID, step, err)
 			}
 
 			buf.Reset()
@@ -155,12 +156,12 @@ func applyStepsStream(ctx context.Context, tx *sql.Tx, r io.Reader, id string, l
 	// cleanup after, for the final statement without the closing `;` on a new line
 	if buf.Len() > 0 {
 		log.Info("migration step",
-			slog.String("id", id),
+			slog.String("migrationID", migrationID),
 			slog.Int("step", step),
 		)
 
 		if _, err := tx.ExecContext(ctx, buf.String()); err != nil {
-			return err
+			return fmt.Errorf("apply migration %q step %d (final): %w", migrationID, step, err)
 		}
 	}
 

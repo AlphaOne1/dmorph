@@ -14,6 +14,7 @@ import (
 
 	"github.com/AlphaOne1/dmorph"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWithMigrationFromFile(t *testing.T) {
@@ -102,17 +103,17 @@ func TestApplyStepsStreamError(t *testing.T) {
 
 	tx, txErr := db.BeginTx(t.Context(), nil)
 
-	assert.NoError(t, txErr, "expected no tx error")
+	require.NoError(t, txErr, "expected no tx error")
 
 	err := dmorph.TapplyStepsStream(context.Background(), tx, &buf, "test", slog.Default())
 
-	assert.Error(t, err, "expected error")
+	require.Error(t, err, "expected error")
 
 	_ = tx.Rollback()
 
 	tx, txErr = db.BeginTx(t.Context(), nil)
 
-	assert.NoError(t, txErr, "expected no tx error")
+	require.NoError(t, txErr, "expected no tx error")
 
 	buf.Reset()
 	buf.WriteString("utter nonsense\n;")

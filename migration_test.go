@@ -89,7 +89,7 @@ func TestMigrationUpdate(t *testing.T) {
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
 
-	assert.NoError(t, migrationsDirErr, "migrations directory could not be opened")
+	require.NoError(t, migrationsDirErr, "migrations directory could not be opened")
 
 	runErr := dmorph.Run(context.Background(),
 		db,
@@ -206,14 +206,14 @@ func TestMigrationUnrelated0(t *testing.T) {
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
 
-	assert.NoError(t, migrationsDirErr, "migrations directory could not be opened")
+	require.NoError(t, migrationsDirErr, "migrations directory could not be opened")
 
 	runErr := dmorph.Run(context.Background(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationsFromFS(migrationsDir))
 
-	assert.NoError(t, runErr, "preparation migrations could not be run")
+	require.NoError(t, runErr, "preparation migrations could not be run")
 
 	runErr = dmorph.Run(context.Background(),
 		db,
@@ -243,7 +243,7 @@ func TestMigrationUnrelated1(t *testing.T) {
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
 
-	assert.NoError(t, migrationsDirErr, "migrations directory could not be opened")
+	require.NoError(t, migrationsDirErr, "migrations directory could not be opened")
 
 	runErr := dmorph.Run(context.Background(),
 		db,
