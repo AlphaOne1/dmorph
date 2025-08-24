@@ -82,6 +82,11 @@ linters:
 
         varnamelen:
             max-distance: 10
+            ignore-names:
+              - ctx
+              - db
+              - err
+              - tx
 
         whitespace:
             multi-if: true

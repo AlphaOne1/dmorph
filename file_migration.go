@@ -66,9 +66,9 @@ func WithMigrationFromFileFS(name string, dir fs.FS) MorphOption {
 
 // WithMigrationsFromFS generates a FileMigration that will run all migration scripts of the files in the given
 // filesystem.
-func WithMigrationsFromFS(d fs.ReadDirFS) MorphOption {
+func WithMigrationsFromFS(d fs.FS) MorphOption {
 	return func(morpher *Morpher) error {
-		dirEntry, err := d.ReadDir(".")
+		dirEntry, err := fs.ReadDir(d, ".")
 
 		if err == nil {
 			for _, entry := range dirEntry {

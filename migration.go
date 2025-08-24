@@ -20,18 +20,18 @@ const MigrationTableName = "migrations"
 // ValidTableNameRex is the regular expression used to check if a given migration table name is valid.
 var ValidTableNameRex = regexp.MustCompile("^[a-zA-Z0-9_]+$")
 
-// ErrMigrationsUnrelated signalizes that the set of migrations to apply and the already applied set do not have the
+// ErrMigrationsUnrelated signals that the set of migrations to apply and the already applied set do not have the
 // same (order of) applied migrations. Applying unrelated migrations could severely harm the database.
 var ErrMigrationsUnrelated = errors.New("migrations unrelated")
 
-// ErrMigrationsUnsorted tells that the already applied migrations were not registered in the order
+// ErrMigrationsUnsorted indicates that the already applied migrations were not registered in the order
 // (using the timestamp) that they should have been registered (using their id).
 var ErrMigrationsUnsorted = errors.New("migrations unsorted")
 
-// ErrNoDialect signalizes that no dialect for the database operations was chosen.
+// ErrNoDialect signals that no dialect for the database operations was chosen.
 var ErrNoDialect = errors.New("no dialect")
 
-// ErrNoMigrations signalizes that no migrations were chosen to be applied.
+// ErrNoMigrations signals that no migrations were chosen to be applied.
 var ErrNoMigrations = errors.New("no migrations")
 
 // ErrNoMigrationTable occurs if there is no migration table present.
@@ -40,7 +40,7 @@ var ErrNoMigrationTable = errors.New("no migration table")
 // ErrMigrationTableNameInvalid occurs if the migration table does not adhere to ValidTableNameRex.
 var ErrMigrationTableNameInvalid = errors.New("invalid migration table name")
 
-// ErrMigrationsTooOld signalizes that the migrations to be applied are older than the migrations that are already
+// ErrMigrationsTooOld signals that the migrations to be applied are older than the migrations that are already
 // present in the database. This error can occur when an older version of the application is started using a database
 // used already by a newer version of the application.
 var ErrMigrationsTooOld = errors.New("migrations too old")
@@ -114,7 +114,7 @@ func WithLog(log *slog.Logger) MorphOption {
 func WithTableName(tableName string) func(*Morpher) error {
 	return func(m *Morpher) error {
 		if len(tableName) < 1 {
-			return fmt.Errorf("table name empty")
+			return ErrMigrationTableNameInvalid
 		}
 
 		if !ValidTableNameRex.MatchString(tableName) {
@@ -230,38 +230,48 @@ func (m *Morpher) applyMigrations(ctx context.Context, db *sql.DB, lastMigration
 			return fmt.Errorf("context cancelled before migration %s: %w", migration.Key(), err)
 		}
 
-		tx, txBeginErr := db.Begin()
-
-		if txBeginErr != nil {
-			return txBeginErr
+		if err := m.runOneMigration(ctx, db, migration); err != nil {
+			return err
 		}
 
-		// Even if we are sure to catch all possibilities, we use this as a safeguard that also with later
-		// modifications. When a successful commit cannot be done, at least the rollback is executed, freeing
-		// allocated resources of the transaction.
-		defer func() { _ = tx.Rollback() }()
-
-		if err := migration.Migrate(ctx, tx); err != nil {
-			rollbackErr := tx.Rollback()
-
-			return errors.Join(err, rollbackErr)
-		}
-
-		if registerErr := m.Dialect.RegisterMigration(ctx, tx, migration.Key(), m.TableName); registerErr != nil {
-			rollbackErr := tx.Rollback()
-
-			return errors.Join(registerErr, rollbackErr)
-		}
-
-		if commitErr := tx.Commit(); commitErr != nil {
-			rollbackErr := tx.Rollback()
-
-			return errors.Join(commitErr, rollbackErr)
-		}
 		m.Log.Info("migration applied",
 			slog.String("file", migration.Key()),
 			slog.Duration("duration", time.Since(startMigration)),
 		)
+	}
+
+	return nil
+}
+
+// runOneMigration executes a single migration within a database transaction and logs its completion.
+func (m *Morpher) runOneMigration(ctx context.Context, db *sql.DB, mig Migration) error {
+	tx, err := db.BeginTx(ctx, nil)
+
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+
+	// Even if we are sure to catch all possibilities, we use this as a safeguard that also with later
+	// modifications. When a successful commit cannot be done, at least the rollback is executed, freeing
+	// allocated resources of the transaction.
+	defer func() { _ = tx.Rollback() }()
+
+	if err := mig.Migrate(ctx, tx); err != nil {
+		rollbackErr := tx.Rollback()
+
+		return errors.Join(err, rollbackErr)
+	}
+
+	if err := m.Dialect.RegisterMigration(ctx, tx, mig.Key(), m.TableName); err != nil {
+		rollbackErr := tx.Rollback()
+
+		return errors.Join(err, rollbackErr)
+	}
+
+	if commitErr := tx.Commit(); commitErr != nil {
+		rollbackErr := tx.Rollback()
+
+		return errors.Join(commitErr, rollbackErr)
 	}
 
 	return nil

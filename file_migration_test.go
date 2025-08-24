@@ -12,10 +12,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"github.com/AlphaOne1/dmorph"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestWithMigrationFromFile(t *testing.T) {
@@ -72,11 +70,9 @@ func TestWithMigrationFromFileError(t *testing.T) {
 // TestMigrationFromFileFSError validates that migrationFromFileFS returns an error
 // when the specified file does not exist.
 func TestMigrationFromFileFSError(t *testing.T) {
-	dir, dirErr := os.OpenRoot("testData")
+	dir := os.DirFS("testData")
 
-	require.NoError(t, dirErr, "could not open test data directory")
-
-	mig := dmorph.TmigrationFromFileFS("nonexistent", dir.FS(), slog.Default())
+	mig := dmorph.TmigrationFromFileFS("nonexistent", dir, slog.Default())
 
 	err := mig.Migrate(context.Background(), nil)
 
@@ -104,7 +100,7 @@ func TestApplyStepsStreamError(t *testing.T) {
 	buf := bytes.Buffer{}
 	buf.WriteString("utter nonsense")
 
-	tx, txErr := db.Begin()
+	tx, txErr := db.BeginTx(t.Context(), nil)
 
 	assert.NoError(t, txErr, "expected no tx error")
 
@@ -114,7 +110,7 @@ func TestApplyStepsStreamError(t *testing.T) {
 
 	_ = tx.Rollback()
 
-	tx, txErr = db.Begin()
+	tx, txErr = db.BeginTx(t.Context(), nil)
 
 	assert.NoError(t, txErr, "expected no tx error")
 

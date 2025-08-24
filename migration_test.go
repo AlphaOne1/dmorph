@@ -64,8 +64,7 @@ func TestMigration(t *testing.T) {
 	runErr := dmorph.Run(context.Background(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationsFromFS(
-			migrationsDir.(fs.ReadDirFS))) // Safe: migrationDir guaranteed to implement fs.ReadDirFS
+		dmorph.WithMigrationsFromFS(migrationsDir))
 
 	assert.NoError(t, runErr, "migrations could not be run")
 }
@@ -102,8 +101,7 @@ func TestMigrationUpdate(t *testing.T) {
 	runErr = dmorph.Run(context.Background(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationsFromFS(
-			migrationsDir.(fs.ReadDirFS))) // Safe: migrationDir guaranteed to implement fs.ReadDirFS
+		dmorph.WithMigrationsFromFS(migrationsDir))
 
 	assert.NoError(t, runErr, "migrations could not be run")
 }
@@ -176,8 +174,7 @@ func TestMigrationTooOld(t *testing.T) {
 	runErr := dmorph.Run(context.Background(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationsFromFS(
-			migrationsDir.(fs.ReadDirFS))) // Safe: migrationDir guaranteed to implement fs.ReadDirFS
+		dmorph.WithMigrationsFromFS(migrationsDir))
 
 	require.NoError(t, runErr, "preparation migrations could not be run")
 
@@ -214,8 +211,7 @@ func TestMigrationUnrelated0(t *testing.T) {
 	runErr := dmorph.Run(context.Background(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationsFromFS(
-			migrationsDir.(fs.ReadDirFS))) // Safe: migrationDir guaranteed to implement fs.ReadDirFS
+		dmorph.WithMigrationsFromFS(migrationsDir))
 
 	assert.NoError(t, runErr, "preparation migrations could not be run")
 
@@ -285,22 +281,21 @@ func TestMigrationAppliedUnordered(t *testing.T) {
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
 
-	assert.NoError(t, migrationsDirErr, "migrations directory could not be opened")
+	require.NoError(t, migrationsDirErr, "migrations directory could not be opened")
 
-	assert.NoError(t, dmorph.DialectSQLite().EnsureMigrationTableExists(context.Background(), db, "migrations"))
+	require.NoError(t, dmorph.DialectSQLite().EnsureMigrationTableExists(context.Background(), db, "migrations"))
 
-	_, execErr := db.Exec(`
+	_, execErr := db.ExecContext(t.Context(), `
 		INSERT INTO migrations (id, create_ts) VALUES ('01_base_table',  '2021-01-02 00:00:00');
 		INSERT INTO migrations (id, create_ts) VALUES ('02_addon_table', '2021-01-01 00:00:00');
 	`)
 
-	assert.NoError(t, execErr, "unordered test could not be prepared")
+	require.NoError(t, execErr, "unordered test could not be prepared")
 
 	runErr := dmorph.Run(context.Background(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationsFromFS(
-			migrationsDir.(fs.ReadDirFS))) // Safe: migrationDir guaranteed to implement fs.ReadDirFS
+		dmorph.WithMigrationsFromFS(migrationsDir))
 
 	assert.ErrorIs(t,
 		runErr,
@@ -620,7 +615,7 @@ func TestMigrationApplyUnableCommit(t *testing.T) {
 
 	require.NoError(t, morpherErr, "morpher could not be created")
 
-	_, execErr := db.Exec("PRAGMA foreign_keys = ON")
+	_, execErr := db.ExecContext(t.Context(), "PRAGMA foreign_keys = ON")
 	require.NoError(t, execErr, "foreign keys checking could not be enabled")
 
 	baseDialect, dialectOK := morpher.Dialect.(dmorph.BaseDialect)
