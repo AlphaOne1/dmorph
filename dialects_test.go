@@ -4,8 +4,6 @@
 package dmorph_test
 
 import (
-	"database/sql"
-	"os"
 	"regexp"
 	"testing"
 
@@ -62,21 +60,7 @@ func TestDialectStatements(t *testing.T) {
 
 // TestCallsOnClosedDB verifies that methods fail as expected when called on a closed database connection.
 func TestCallsOnClosedDB(t *testing.T) {
-	dbFile, dbFileErr := prepareDB()
-
-	if dbFileErr != nil {
-		t.Errorf("DB file could not be created: %v", dbFileErr)
-	} else {
-		defer func() { _ = os.Remove(dbFile) }()
-	}
-
-	db, dbErr := sql.Open("sqlite", dbFile)
-
-	if dbErr != nil {
-		t.Errorf("DB file could not be created: %v", dbErr)
-	} else {
-		_ = db.Close()
-	}
+	db, _ := openTempSQLite(t)
 
 	assert.Error(t,
 		dmorph.DialectSQLite().EnsureMigrationTableExists(t.Context(), db, "irrelevant"),
@@ -97,21 +81,7 @@ func TestEnsureMigrationTableExistsSQLError(t *testing.T) {
             )`,
 	}
 
-	dbFile, dbFileErr := prepareDB()
-
-	if dbFileErr != nil {
-		t.Errorf("DB file could not be created: %v", dbFileErr)
-	} else {
-		defer func() { _ = os.Remove(dbFile) }()
-	}
-
-	db, dbErr := sql.Open("sqlite", dbFile)
-
-	if dbErr != nil {
-		t.Errorf("DB file could not be created: %v", dbErr)
-	} else {
-		defer func() { _ = db.Close() }()
-	}
+	db, _ := openTempSQLite(t)
 
 	assert.Error(t, dialect.EnsureMigrationTableExists(t.Context(), db, "test"), "expected error")
 }
@@ -119,7 +89,7 @@ func TestEnsureMigrationTableExistsSQLError(t *testing.T) {
 // TestEnsureMigrationTableExistsCommitError tests the behavior of EnsureMigrationTableExists
 // when a commit error occurs.
 func TestEnsureMigrationTableExistsCommitError(t *testing.T) {
-	d := dmorph.BaseDialect{
+	dialect := dmorph.BaseDialect{
 		CreateTemplate: `
 			CREATE TABLE t0 (
 			    id INTEGER PRIMARY KEY
@@ -137,25 +107,11 @@ func TestEnsureMigrationTableExistsCommitError(t *testing.T) {
 			DELETE FROM t0 WHERE id = 1;`,
 	}
 
-	dbFile, dbFileErr := prepareDB()
+	db, _ := openTempSQLite(t)
 
-	if dbFileErr != nil {
-		t.Errorf("DB file could not be created: %v", dbFileErr)
-	} else {
-		defer func() { _ = os.Remove(dbFile) }()
-	}
-
-	db, dbErr := sql.Open("sqlite", dbFile)
-
-	if dbErr != nil {
-		t.Errorf("DB file could not be created: %v", dbErr)
-	} else {
-		defer func() { _ = db.Close() }()
-	}
-
-	_, execErr := db.Exec("PRAGMA foreign_keys = ON")
+	_, execErr := db.ExecContext(t.Context(), "PRAGMA foreign_keys = ON")
 
 	assert.NoError(t, execErr, "foreign keys checking could not be enabled")
 
-	assert.Error(t, d.EnsureMigrationTableExists(t.Context(), db, "test"), "expected error")
+	assert.Error(t, dialect.EnsureMigrationTableExists(t.Context(), db, "test"), "expected error")
 }

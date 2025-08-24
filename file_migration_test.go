@@ -5,7 +5,6 @@ package dmorph_test
 
 import (
 	"bytes"
-	"database/sql"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -17,21 +16,7 @@ import (
 )
 
 func TestWithMigrationFromFile(t *testing.T) {
-	dbFile, dbFileErr := prepareDB()
-
-	if dbFileErr != nil {
-		t.Errorf("DB file could not be created: %v", dbFileErr)
-	} else {
-		defer func() { _ = os.Remove(dbFile) }()
-	}
-
-	db, dbErr := sql.Open("sqlite", dbFile)
-
-	if dbErr != nil {
-		t.Errorf("DB file could not be created: %v", dbErr)
-	} else {
-		defer func() { _ = db.Close() }()
-	}
+	db, _ := openTempSQLite(t)
 
 	runErr := dmorph.Run(t.Context(),
 		db,
@@ -42,21 +27,7 @@ func TestWithMigrationFromFile(t *testing.T) {
 }
 
 func TestWithMigrationFromFileError(t *testing.T) {
-	dbFile, dbFileErr := prepareDB()
-
-	if dbFileErr != nil {
-		t.Errorf("DB file could not be created: %v", dbFileErr)
-	} else {
-		defer func() { _ = os.Remove(dbFile) }()
-	}
-
-	db, dbErr := sql.Open("sqlite", dbFile)
-
-	if dbErr != nil {
-		t.Errorf("DB file could not be created: %v", dbErr)
-	} else {
-		defer func() { _ = db.Close() }()
-	}
+	db, _ := openTempSQLite(t)
 
 	runErr := dmorph.Run(t.Context(),
 		db,
@@ -81,21 +52,7 @@ func TestMigrationFromFileFSError(t *testing.T) {
 
 // TestApplyStepsStreamError tests error handling in applyStepsStream.
 func TestApplyStepsStreamError(t *testing.T) {
-	dbFile, dbFileErr := prepareDB()
-
-	if dbFileErr != nil {
-		t.Errorf("DB file could not be created: %v", dbFileErr)
-	} else {
-		defer func() { _ = os.Remove(dbFile) }()
-	}
-
-	db, dbErr := sql.Open("sqlite", dbFile)
-
-	if dbErr != nil {
-		t.Errorf("DB file could not be created: %v", dbErr)
-	} else {
-		defer func() { _ = db.Close() }()
-	}
+	db, _ := openTempSQLite(t)
 
 	buf := bytes.Buffer{}
 	buf.WriteString("utter nonsense")

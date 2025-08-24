@@ -39,17 +39,23 @@ func prepareDB() (string, error) {
 	return result, nil
 }
 
-// TestMigration tests the happy flow.
-func TestMigration(t *testing.T) {
-	dbFile, dbFileErr := prepareDB()
+func openTempSQLite(t *testing.T) (*sql.DB, string) {
+	t.Helper()
 
-	require.NoError(t, dbFileErr, "DB file could not be created")
-	defer func() { _ = os.Remove(dbFile) }()
+	dbFile, err := prepareDB()
+	require.NoError(t, err, "DB file could not be created")
+	t.Cleanup(func() { _ = os.Remove(dbFile) })
 
 	db, dbErr := sql.Open("sqlite", dbFile)
-
-	require.NoError(t, dbErr, "DB file could not be created")
+	require.NoError(t, dbErr, "DB could not be opened")
 	t.Cleanup(func() { _ = db.Close() })
+
+	return db, dbFile
+}
+
+// TestMigration tests the happy flow.
+func TestMigration(t *testing.T) {
+	db, _ := openTempSQLite(t)
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
 
@@ -65,21 +71,7 @@ func TestMigration(t *testing.T) {
 
 // TestMigrationUpdate tests the happy flow of updating on existing migrations.
 func TestMigrationUpdate(t *testing.T) {
-	dbFile, dbFileErr := prepareDB()
-
-	if dbFileErr != nil {
-		t.Errorf("DB file could not be created: %v", dbFileErr)
-	} else {
-		defer func() { _ = os.Remove(dbFile) }()
-	}
-
-	db, dbErr := sql.Open("sqlite", dbFile)
-
-	if dbErr != nil {
-		t.Errorf("DB file could not be created: %v", dbErr)
-	} else {
-		defer func() { _ = db.Close() }()
-	}
+	db, _ := openTempSQLite(t)
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
 
@@ -111,21 +103,7 @@ func (m TestMigrationImpl) Migrate(ctx context.Context, tx *sql.Tx) error {
 
 // TestWithMigrations tests the adding of migrations using WithMigrations.
 func TestWithMigrations(t *testing.T) {
-	dbFile, dbFileErr := prepareDB()
-
-	if dbFileErr != nil {
-		t.Errorf("DB file could not be created: %v", dbFileErr)
-	} else {
-		defer func() { _ = os.Remove(dbFile) }()
-	}
-
-	db, dbErr := sql.Open("sqlite", dbFile)
-
-	if dbErr != nil {
-		t.Errorf("DB file could not be created: %v", dbErr)
-	} else {
-		defer func() { _ = db.Close() }()
-	}
+	db, _ := openTempSQLite(t)
 
 	runErr := dmorph.Run(t.Context(),
 		db,
@@ -145,21 +123,7 @@ func TestMigrationUnableToCreateMorpher(t *testing.T) {
 
 // TestMigrationTooOld tests what happens if the applied migrations are too old.
 func TestMigrationTooOld(t *testing.T) {
-	dbFile, dbFileErr := prepareDB()
-
-	if dbFileErr != nil {
-		t.Errorf("DB file could not be created: %v", dbFileErr)
-	} else {
-		defer func() { _ = os.Remove(dbFile) }()
-	}
-
-	db, dbErr := sql.Open("sqlite", dbFile)
-
-	if dbErr != nil {
-		t.Errorf("DB file could not be created: %v", dbErr)
-	} else {
-		defer func() { _ = db.Close() }()
-	}
+	db, _ := openTempSQLite(t)
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
 
@@ -182,21 +146,7 @@ func TestMigrationTooOld(t *testing.T) {
 
 // TestMigrationUnrelated0 tests what happens if the applied migrations are unrelated to existing ones.
 func TestMigrationUnrelated0(t *testing.T) {
-	dbFile, dbFileErr := prepareDB()
-
-	if dbFileErr != nil {
-		t.Errorf("DB file could not be created: %v", dbFileErr)
-	} else {
-		defer func() { _ = os.Remove(dbFile) }()
-	}
-
-	db, dbErr := sql.Open("sqlite", dbFile)
-
-	if dbErr != nil {
-		t.Errorf("DB file could not be created: %v", dbErr)
-	} else {
-		defer func() { _ = db.Close() }()
-	}
+	db, _ := openTempSQLite(t)
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
 
@@ -219,21 +169,7 @@ func TestMigrationUnrelated0(t *testing.T) {
 
 // TestMigrationUnrelated1 tests what happens if the applied migrations are unrelated to existing ones.
 func TestMigrationUnrelated1(t *testing.T) {
-	dbFile, dbFileErr := prepareDB()
-
-	if dbFileErr != nil {
-		t.Errorf("DB file could not be created: %v", dbFileErr)
-	} else {
-		defer func() { _ = os.Remove(dbFile) }()
-	}
-
-	db, dbErr := sql.Open("sqlite", dbFile)
-
-	if dbErr != nil {
-		t.Errorf("DB file could not be created: %v", dbErr)
-	} else {
-		defer func() { _ = db.Close() }()
-	}
+	db, _ := openTempSQLite(t)
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
 
@@ -257,21 +193,7 @@ func TestMigrationUnrelated1(t *testing.T) {
 // TestMigrationAppliedUnordered tests the case, that somehow the migrations in the
 // database are registered not in the order of their keys.
 func TestMigrationAppliedUnordered(t *testing.T) {
-	dbFile, dbFileErr := prepareDB()
-
-	if dbFileErr != nil {
-		t.Errorf("DB file could not be created: %v", dbFileErr)
-	} else {
-		defer func() { _ = os.Remove(dbFile) }()
-	}
-
-	db, dbErr := sql.Open("sqlite", dbFile)
-
-	if dbErr != nil {
-		t.Errorf("DB file could not be created: %v", dbErr)
-	} else {
-		defer func() { _ = db.Close() }()
-	}
+	db, _ := openTempSQLite(t)
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
 
@@ -458,21 +380,7 @@ func TestMigrationRunInvalid(t *testing.T) {
 // TestMigrationRunInvalidCreate tests the behavior of running a migration
 // with an invalid CreateTemplate in the dialect.
 func TestMigrationRunInvalidCreate(t *testing.T) {
-	dbFile, dbFileErr := prepareDB()
-
-	if dbFileErr != nil {
-		t.Errorf("DB file could not be created: %v", dbFileErr)
-	} else {
-		defer func() { _ = os.Remove(dbFile) }()
-	}
-
-	db, dbErr := sql.Open("sqlite", dbFile)
-
-	if dbErr != nil {
-		t.Errorf("DB file could not be created: %v", dbErr)
-	} else {
-		defer func() { _ = db.Close() }()
-	}
+	db, _ := openTempSQLite(t)
 
 	dialect := dmorph.DialectSQLite()
 	dialect.CreateTemplate = "utter nonsense"
@@ -490,21 +398,7 @@ func TestMigrationRunInvalidCreate(t *testing.T) {
 
 // TestMigrationRunInvalidApplied tests the failure scenario where the AppliedTemplate of the dialect is invalid.
 func TestMigrationRunInvalidApplied(t *testing.T) {
-	dbFile, dbFileErr := prepareDB()
-
-	if dbFileErr != nil {
-		t.Errorf("DB file could not be created: %v", dbFileErr)
-	} else {
-		defer func() { _ = os.Remove(dbFile) }()
-	}
-
-	db, dbErr := sql.Open("sqlite", dbFile)
-
-	if dbErr != nil {
-		t.Errorf("DB file could not be created: %v", dbErr)
-	} else {
-		defer func() { _ = db.Close() }()
-	}
+	db, _ := openTempSQLite(t)
 
 	dialect := dmorph.DialectSQLite()
 	dialect.AppliedTemplate = "utter nonsense"
@@ -522,21 +416,7 @@ func TestMigrationRunInvalidApplied(t *testing.T) {
 
 // TestMigrationApplyInvalidDB verifies that applying migrations to an invalid or closed database results in an error.
 func TestMigrationApplyInvalidDB(t *testing.T) {
-	dbFile, dbFileErr := prepareDB()
-
-	if dbFileErr != nil {
-		t.Errorf("DB file could not be created: %v", dbFileErr)
-	} else {
-		defer func() { _ = os.Remove(dbFile) }()
-	}
-
-	db, dbErr := sql.Open("sqlite", dbFile)
-
-	if dbErr != nil {
-		t.Errorf("DB file could not be created: %v", dbErr)
-	} else {
-		_ = db.Close()
-	}
+	db, _ := openTempSQLite(t)
 
 	morpher, morpherErr := dmorph.NewMorpher(
 		dmorph.WithDialect(dmorph.DialectSQLite()),
@@ -551,21 +431,7 @@ func TestMigrationApplyInvalidDB(t *testing.T) {
 
 // TestMigrationApplyUnableRegister tests the behavior when the migration registration fails due to an invalid template.
 func TestMigrationApplyUnableRegister(t *testing.T) {
-	dbFile, dbFileErr := prepareDB()
-
-	if dbFileErr != nil {
-		t.Errorf("DB file could not be created: %v", dbFileErr)
-	} else {
-		defer func() { _ = os.Remove(dbFile) }()
-	}
-
-	db, dbErr := sql.Open("sqlite", dbFile)
-
-	if dbErr != nil {
-		t.Errorf("DB file could not be created: %v", dbErr)
-	} else {
-		defer func() { _ = db.Close() }()
-	}
+	db, _ := openTempSQLite(t)
 
 	morpher, morpherErr := dmorph.NewMorpher(
 		dmorph.WithDialect(dmorph.DialectSQLite()),
@@ -587,21 +453,7 @@ func TestMigrationApplyUnableRegister(t *testing.T) {
 // TestMigrationApplyUnableCommit tests the scenario where a migration application fails
 // due to inability to commit a transaction.
 func TestMigrationApplyUnableCommit(t *testing.T) {
-	dbFile, dbFileErr := prepareDB()
-
-	if dbFileErr != nil {
-		t.Errorf("DB file could not be created: %v", dbFileErr)
-	} else {
-		defer func() { _ = os.Remove(dbFile) }()
-	}
-
-	db, dbErr := sql.Open("sqlite", dbFile)
-
-	if dbErr != nil {
-		t.Errorf("DB file could not be created: %v", dbErr)
-	} else {
-		defer func() { _ = db.Close() }()
-	}
+	db, _ := openTempSQLite(t)
 
 	morpher, morpherErr := dmorph.NewMorpher(
 		dmorph.WithDialect(dmorph.DialectSQLite()),
