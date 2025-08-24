@@ -97,7 +97,7 @@ func TestMigrationUpdate(t *testing.T) {
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationFromFileFS("01_base_table.sql", migrationsDir))
 
-	assert.NoError(t, runErr, "preparation migrations could not be run")
+	require.NoError(t, runErr, "preparation migrations could not be run")
 
 	runErr = dmorph.Run(context.Background(),
 		db,
@@ -176,7 +176,8 @@ func TestMigrationTooOld(t *testing.T) {
 	runErr := dmorph.Run(context.Background(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationsFromFS(migrationsDir.(fs.ReadDirFS)))
+		dmorph.WithMigrationsFromFS(
+			migrationsDir.(fs.ReadDirFS))) // Safe: migrationDir guaranteed to implement fs.ReadDirFS
 
 	require.NoError(t, runErr, "preparation migrations could not be run")
 
@@ -213,7 +214,8 @@ func TestMigrationUnrelated0(t *testing.T) {
 	runErr := dmorph.Run(context.Background(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationsFromFS(migrationsDir.(fs.ReadDirFS)))
+		dmorph.WithMigrationsFromFS(
+			migrationsDir.(fs.ReadDirFS))) // Safe: migrationDir guaranteed to implement fs.ReadDirFS
 
 	assert.NoError(t, runErr, "preparation migrations could not be run")
 
@@ -252,7 +254,7 @@ func TestMigrationUnrelated1(t *testing.T) {
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationFromFileFS("01_base_table.sql", migrationsDir))
 
-	assert.NoError(t, runErr, "preparation migrations could not be run")
+	require.NoError(t, runErr, "preparation migrations could not be run")
 
 	runErr = dmorph.Run(context.Background(),
 		db,
@@ -297,7 +299,8 @@ func TestMigrationAppliedUnordered(t *testing.T) {
 	runErr := dmorph.Run(context.Background(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationsFromFS(migrationsDir.(fs.ReadDirFS)))
+		dmorph.WithMigrationsFromFS(
+			migrationsDir.(fs.ReadDirFS))) // Safe: migrationDir guaranteed to implement fs.ReadDirFS
 
 	assert.ErrorIs(t,
 		runErr,
@@ -489,7 +492,7 @@ func TestMigrationRunInvalidCreate(t *testing.T) {
 		dmorph.WithDialect(dialect),
 		dmorph.WithMigrationFromFile("testData/01_base_table.sql"))
 
-	assert.NoError(t, morpherErr, "morpher could not be created")
+	require.NoError(t, morpherErr, "morpher could not be created")
 
 	runErr := morpher.Run(context.Background(), db)
 
@@ -521,7 +524,7 @@ func TestMigrationRunInvalidApplied(t *testing.T) {
 		dmorph.WithDialect(dialect),
 		dmorph.WithMigrationFromFile("testData/01_base_table.sql"))
 
-	assert.NoError(t, morpherErr, "morpher could not be created")
+	require.NoError(t, morpherErr, "morpher could not be created")
 
 	runErr := morpher.Run(context.Background(), db)
 

@@ -224,6 +224,12 @@ func (m *Morpher) applyMigrations(ctx context.Context, db *sql.DB, lastMigration
 
 		m.Log.Info("applying migration", slog.String("file", migration.Key()))
 		startMigration = time.Now()
+
+		// Check context before starting a transaction
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("context cancelled before migration %s: %w", migration.Key(), err)
+		}
+
 		tx, txBeginErr := db.Begin()
 
 		if txBeginErr != nil {

@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/AlphaOne1/dmorph"
 )
@@ -73,7 +74,7 @@ func TestWithMigrationFromFileError(t *testing.T) {
 func TestMigrationFromFileFSError(t *testing.T) {
 	dir, dirErr := os.OpenRoot("testData")
 
-	assert.NoError(t, dirErr, "could not open test data directory")
+	require.NoError(t, dirErr, "could not open test data directory")
 
 	mig := dmorph.TmigrationFromFileFS("nonexistent", dir.FS(), slog.Default())
 
