@@ -43,25 +43,19 @@ func prepareDB() (string, error) {
 func TestMigration(t *testing.T) {
 	dbFile, dbFileErr := prepareDB()
 
-	if dbFileErr != nil {
-		t.Errorf("DB file could not be created: %v", dbFileErr)
-	} else {
-		defer func() { _ = os.Remove(dbFile) }()
-	}
+	require.NoError(t, dbFileErr, "DB file could not be created")
+	defer func() { _ = os.Remove(dbFile) }()
 
 	db, dbErr := sql.Open("sqlite", dbFile)
 
-	if dbErr != nil {
-		t.Errorf("DB file could not be created: %v", dbErr)
-	} else {
-		defer func() { _ = db.Close() }()
-	}
+	require.NoError(t, dbErr, "DB file could not be created")
+	t.Cleanup(func() { _ = db.Close() })
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
 
 	require.NoError(t, migrationsDirErr, "migrations directory could not be opened")
 
-	runErr := dmorph.Run(context.Background(),
+	runErr := dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationsFromFS(migrationsDir))
@@ -91,14 +85,14 @@ func TestMigrationUpdate(t *testing.T) {
 
 	require.NoError(t, migrationsDirErr, "migrations directory could not be opened")
 
-	runErr := dmorph.Run(context.Background(),
+	runErr := dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationFromFileFS("01_base_table.sql", migrationsDir))
 
 	require.NoError(t, runErr, "preparation migrations could not be run")
 
-	runErr = dmorph.Run(context.Background(),
+	runErr = dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationsFromFS(migrationsDir))
@@ -133,7 +127,7 @@ func TestWithMigrations(t *testing.T) {
 		defer func() { _ = db.Close() }()
 	}
 
-	runErr := dmorph.Run(context.Background(),
+	runErr := dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrations(TestMigrationImpl{}))
@@ -144,7 +138,7 @@ func TestWithMigrations(t *testing.T) {
 // TestMigrationUnableToCreateMorpher tests to use the Run function without any
 // useful parameter.
 func TestMigrationUnableToCreateMorpher(t *testing.T) {
-	runErr := dmorph.Run(context.Background(), nil)
+	runErr := dmorph.Run(t.Context(), nil)
 
 	assert.Error(t, runErr, "morpher should not have run")
 }
@@ -171,14 +165,14 @@ func TestMigrationTooOld(t *testing.T) {
 
 	require.NoError(t, migrationsDirErr, "migrations directory could not be opened")
 
-	runErr := dmorph.Run(context.Background(),
+	runErr := dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationsFromFS(migrationsDir))
 
 	require.NoError(t, runErr, "preparation migrations could not be run")
 
-	runErr = dmorph.Run(context.Background(),
+	runErr = dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationFromFileFS("01_base_table.sql", migrationsDir))
@@ -208,14 +202,14 @@ func TestMigrationUnrelated0(t *testing.T) {
 
 	require.NoError(t, migrationsDirErr, "migrations directory could not be opened")
 
-	runErr := dmorph.Run(context.Background(),
+	runErr := dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationsFromFS(migrationsDir))
 
 	require.NoError(t, runErr, "preparation migrations could not be run")
 
-	runErr = dmorph.Run(context.Background(),
+	runErr = dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationFromFileFS("02_addon_table.sql", migrationsDir))
@@ -245,14 +239,14 @@ func TestMigrationUnrelated1(t *testing.T) {
 
 	require.NoError(t, migrationsDirErr, "migrations directory could not be opened")
 
-	runErr := dmorph.Run(context.Background(),
+	runErr := dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationFromFileFS("01_base_table.sql", migrationsDir))
 
 	require.NoError(t, runErr, "preparation migrations could not be run")
 
-	runErr = dmorph.Run(context.Background(),
+	runErr = dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationFromFileFS("02_addon_table.sql", migrationsDir))
@@ -283,7 +277,7 @@ func TestMigrationAppliedUnordered(t *testing.T) {
 
 	require.NoError(t, migrationsDirErr, "migrations directory could not be opened")
 
-	require.NoError(t, dmorph.DialectSQLite().EnsureMigrationTableExists(context.Background(), db, "migrations"))
+	require.NoError(t, dmorph.DialectSQLite().EnsureMigrationTableExists(t.Context(), db, "migrations"))
 
 	_, execErr := db.ExecContext(t.Context(), `
 		INSERT INTO migrations (id, create_ts) VALUES ('01_base_table',  '2021-01-02 00:00:00');
@@ -292,7 +286,7 @@ func TestMigrationAppliedUnordered(t *testing.T) {
 
 	require.NoError(t, execErr, "unordered test could not be prepared")
 
-	runErr := dmorph.Run(context.Background(),
+	runErr := dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationsFromFS(migrationsDir))
@@ -437,7 +431,7 @@ func TestMigrationWithTableNameInvalidSize(t *testing.T) {
 		dmorph.WithTableName(""),
 	)
 
-	assert.Error(t, err, "morpher could created with empty table name")
+	assert.Error(t, err, "morpher could be created with empty table name")
 }
 
 // TestMigrationWithTableNameInvalidChars ensures that creating a Morpher
@@ -449,16 +443,16 @@ func TestMigrationWithTableNameInvalidChars(t *testing.T) {
 		dmorph.WithTableName("di/mor/pho/don"),
 	)
 
-	assert.Error(t, err, "morpher could created with invalid table name")
+	assert.Error(t, err, "morpher could be created with invalid table name")
 }
 
 // TestMigrationRunInvalid verifies that running a Morpher with invalid configuration results in an error.
 func TestMigrationRunInvalid(t *testing.T) {
 	morpher := dmorph.Morpher{}
 
-	runErr := morpher.Run(context.Background(), nil)
+	runErr := morpher.Run(t.Context(), nil)
 
-	assert.Error(t, runErr, "morpher should run")
+	assert.Error(t, runErr, "morpher should not run")
 }
 
 // TestMigrationRunInvalidCreate tests the behavior of running a migration
@@ -489,7 +483,7 @@ func TestMigrationRunInvalidCreate(t *testing.T) {
 
 	require.NoError(t, morpherErr, "morpher could not be created")
 
-	runErr := morpher.Run(context.Background(), db)
+	runErr := morpher.Run(t.Context(), db)
 
 	assert.Error(t, runErr, "morpher should not run")
 }
@@ -521,7 +515,7 @@ func TestMigrationRunInvalidApplied(t *testing.T) {
 
 	require.NoError(t, morpherErr, "morpher could not be created")
 
-	runErr := morpher.Run(context.Background(), db)
+	runErr := morpher.Run(t.Context(), db)
 
 	assert.Error(t, runErr, "morpher should not run")
 }
@@ -551,7 +545,7 @@ func TestMigrationApplyInvalidDB(t *testing.T) {
 	require.NoError(t, morpherErr, "morpher could not be created")
 
 	assert.Error(t,
-		morpher.TapplyMigrations(context.Background(), db, "irrelevant"),
+		morpher.TapplyMigrations(t.Context(), db, "irrelevant"),
 		"morpher should error on invalid DB")
 }
 
@@ -586,7 +580,7 @@ func TestMigrationApplyUnableRegister(t *testing.T) {
 	morpher.Dialect = d
 
 	assert.Error(t,
-		morpher.TapplyMigrations(context.Background(), db, ""),
+		morpher.TapplyMigrations(t.Context(), db, ""),
 		"morpher should fail to register")
 }
 
@@ -640,6 +634,6 @@ func TestMigrationApplyUnableCommit(t *testing.T) {
 	morpher.Dialect = baseDialect
 
 	assert.Error(t,
-		morpher.TapplyMigrations(context.Background(), db, ""),
+		morpher.TapplyMigrations(t.Context(), db, ""),
 		"morpher should fail to register")
 }
