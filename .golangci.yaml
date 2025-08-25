@@ -1,3 +1,6 @@
+# Copyright the dmorph contributors.
+# SPDX-License-Identifier: MPL-2.0
+
 # Configuration file for golangci-lint
 # See https://golangci-lint.run/usage/configuration/ for more information
 
@@ -9,25 +12,85 @@ run:
 
 linters:
     default: all
-    #enable:
-    #    # Default linters
-    #    - errcheck
-    #    - govet
-    #    - ineffassign
-    #    - staticcheck
-    #    - unused
-    #    # Additional linters
-    #    - gosec
-    #    - misspell
-    #    - revive
-    #    - bodyclose
-    #    - noctx
+
+    disable:
+        - exhaustruct
+        - forbidigo
+        - noinlineerr
+        - nonamedreturns
+        - wsl
+        - wsl_v5
 
     exclusions:
+        warn-unused: true
+
         rules:
-            - path: main_test.go
+            - path: _test\.go
               linters:
-                  - gosec
+                  - cyclop
+                  - dupl
+                  - dupword
+                  - err113
+                  - funlen
+                  - gocognit
+                  - maintidx
+                  - nestif
+
+            - path: examples/
+              linters:
+                  - err113
+
+    settings:
+        cyclop:
+            max-complexity: 25
+
+        depguard:
+            rules:
+                main:
+                    files:
+                        - $all
+                        - "!$test"
+                        - "!**/examples/**/*"
+                    allow:
+                        - $gostd
+                test:
+                    files:
+                        - $test
+                        - "**/examples/**/*"
+                    allow:
+                        - $gostd
+                        - github.com/stretchr/testify/assert
+                        - github.com/stretchr/testify/require
+                        - github.com/AlphaOne1/dmorph
+                        - modernc.org/sqlite
+
+        exhaustive:
+            default-signifies-exhaustive: true
+
+        mnd:
+            ignored-numbers:
+                - "2"
+
+        paralleltest:
+            ignore-missing: true
+
+        perfsprint:
+            errorf: false
+
+        testpackage:
+            skip-regexp: internal_test\.go
+
+        varnamelen:
+            max-distance: 10
+            ignore-names:
+              - ctx
+              - db
+              - err
+              - tx
+
+        whitespace:
+            multi-if: true
+            multi-func: true
 
 issues:
     max-issues-per-linter: 0

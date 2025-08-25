@@ -4,6 +4,7 @@
 package dmorph
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -11,7 +12,7 @@ import (
 
 // BaseDialect is a convenience type for databases that manage the necessary operations solely using
 // queries. Defining the CreateTemplate, AppliedTemplate and RegisterTemplate enables the BaseDialect to
-// perform all the necessary operation to fulfill the Dialect interface.
+// perform all the necessary operations to fulfill the Dialect interface.
 type BaseDialect struct {
 	CreateTemplate   string // statement ensuring the existence of the migration table
 	AppliedTemplate  string // statement getting applied migrations ordered by application date
@@ -19,33 +20,42 @@ type BaseDialect struct {
 }
 
 // EnsureMigrationTableExists ensures that the migration table, saving the applied migrations ids, exists.
-func (b BaseDialect) EnsureMigrationTableExists(db *sql.DB, tableName string) error {
-	tx, err := db.Begin()
+func (b BaseDialect) EnsureMigrationTableExists(ctx context.Context, db *sql.DB, tableName string) error {
+	tx, err := db.BeginTx(ctx, nil)
 
 	if err != nil {
 		return err
 	}
 
-	defer func() { _ = tx.Rollback() }()
+	// Safety net for unexpected panics
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback()
+		}
+	}()
 
-	_, execErr := tx.Exec(fmt.Sprintf(b.CreateTemplate, tableName))
-
-	if execErr != nil {
+	if _, execErr := tx.ExecContext(ctx, fmt.Sprintf(b.CreateTemplate, tableName)); execErr != nil {
 		rollbackErr := tx.Rollback()
+		tx = nil
+
 		return errors.Join(execErr, rollbackErr)
 	}
 
 	if err := tx.Commit(); err != nil {
 		rollbackErr := tx.Rollback()
+		tx = nil
+
 		return errors.Join(err, rollbackErr)
 	}
+
+	tx = nil
 
 	return nil
 }
 
 // AppliedMigrations gets the already applied migrations from the database, ordered by application date.
-func (b BaseDialect) AppliedMigrations(db *sql.DB, tableName string) ([]string, error) {
-	rows, rowsErr := db.Query(fmt.Sprintf(b.AppliedTemplate, tableName))
+func (b BaseDialect) AppliedMigrations(ctx context.Context, db *sql.DB, tableName string) ([]string, error) {
+	rows, rowsErr := db.QueryContext(ctx, fmt.Sprintf(b.AppliedTemplate, tableName))
 
 	if rowsErr != nil {
 		return nil, rowsErr
@@ -67,8 +77,8 @@ func (b BaseDialect) AppliedMigrations(db *sql.DB, tableName string) ([]string, 
 }
 
 // RegisterMigration registers a migration in the migration table.
-func (b BaseDialect) RegisterMigration(tx *sql.Tx, id string, tableName string) error {
-	_, err := tx.Exec(fmt.Sprintf(b.RegisterTemplate, tableName),
+func (b BaseDialect) RegisterMigration(ctx context.Context, tx *sql.Tx, id string, tableName string) error {
+	_, err := tx.ExecContext(ctx, fmt.Sprintf(b.RegisterTemplate, tableName),
 		sql.Named("id", id))
 
 	return err
