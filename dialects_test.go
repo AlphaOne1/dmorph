@@ -4,10 +4,10 @@
 package dmorph_test
 
 import (
-	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/AlphaOne1/dmorph"
 )
@@ -30,8 +30,6 @@ func TestDialectStatements(t *testing.T) {
 		{name: "SQLite", caller: dmorph.DialectSQLite},
 	}
 
-	re := regexp.MustCompile("%s")
-
 	for k, v := range tests {
 		d := v.caller()
 
@@ -40,28 +38,25 @@ func TestDialectStatements(t *testing.T) {
 		}
 		assert.Contains(t, d.CreateTemplate, "%s",
 			"no table name placeholder in create template for", v.name)
-		assert.Regexp(t, re, d.CreateTemplate)
 
 		if len(d.AppliedTemplate) < 10 {
 			t.Errorf("%v: applied template is too short for %v", k, v.name)
 		}
 		assert.Contains(t, d.AppliedTemplate, "%s",
 			"no table name placeholder in applied template for", v.name)
-		assert.Regexp(t, re, d.AppliedTemplate)
 
 		if len(d.RegisterTemplate) < 10 {
 			t.Errorf("%v: register template is too short for %v", k, v.name)
 		}
 		assert.Contains(t, d.RegisterTemplate, "%s",
 			"no table name placeholder in register template for", v.name)
-		assert.Regexp(t, re, d.RegisterTemplate)
 	}
 }
 
 // TestCallsOnClosedDB verifies that methods fail as expected when called on a closed database connection.
 func TestCallsOnClosedDB(t *testing.T) {
-	db, _ := openTempSQLite(t)
-	db.Close()
+	db := openTempSQLite(t)
+	require.NoError(t, db.Close())
 
 	assert.Error(t,
 		dmorph.DialectSQLite().EnsureMigrationTableExists(t.Context(), db, "irrelevant"),
@@ -82,7 +77,7 @@ func TestEnsureMigrationTableExistsSQLError(t *testing.T) {
             )`,
 	}
 
-	db, _ := openTempSQLite(t)
+	db := openTempSQLite(t)
 
 	assert.Error(t, dialect.EnsureMigrationTableExists(t.Context(), db, "test"), "expected error")
 }
@@ -108,11 +103,11 @@ func TestEnsureMigrationTableExistsCommitError(t *testing.T) {
 			DELETE FROM t0 WHERE id = 1;`,
 	}
 
-	db, _ := openTempSQLite(t)
+	db := openTempSQLite(t)
 
 	_, execErr := db.ExecContext(t.Context(), "PRAGMA foreign_keys = ON")
 
-	assert.NoError(t, execErr, "foreign keys checking could not be enabled")
+	require.NoError(t, execErr, "foreign keys checking could not be enabled")
 
 	assert.Error(t, dialect.EnsureMigrationTableExists(t.Context(), db, "test"), "expected error")
 }

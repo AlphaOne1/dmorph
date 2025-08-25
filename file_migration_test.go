@@ -16,7 +16,7 @@ import (
 )
 
 func TestWithMigrationFromFile(t *testing.T) {
-	db, _ := openTempSQLite(t)
+	db := openTempSQLite(t)
 
 	runErr := dmorph.Run(t.Context(),
 		db,
@@ -27,7 +27,7 @@ func TestWithMigrationFromFile(t *testing.T) {
 }
 
 func TestWithMigrationFromFileError(t *testing.T) {
-	db, _ := openTempSQLite(t)
+	db := openTempSQLite(t)
 
 	runErr := dmorph.Run(t.Context(),
 		db,
@@ -52,7 +52,7 @@ func TestMigrationFromFileFSError(t *testing.T) {
 
 // TestApplyStepsStreamError tests error handling in applyStepsStream.
 func TestApplyStepsStreamError(t *testing.T) {
-	db, _ := openTempSQLite(t)
+	db := openTempSQLite(t)
 
 	buf := bytes.Buffer{}
 	buf.WriteString("utter nonsense")
