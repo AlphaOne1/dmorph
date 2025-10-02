@@ -1,7 +1,11 @@
-dmorph Community Code of Conduct
+<!-- SPDX-FileCopyrightText: 2025 The DMorph contributors.
+     SPDX-License-Identifier: MPL-2.0
+-->
+
+DMorph Community Code of Conduct
 =================================
 
-Like the technical community as a whole, the *dmorph* team and community is
+Like the technical community as a whole, the *DMorph* team and community is
 made up of a mixture of professionals and volunteers from all over the world,
 working on every aspect of the mission—including mentorship, teaching and
 connecting people.
@@ -31,9 +35,9 @@ mailing list, and other forums such as Skype, Google+ Hangouts, etc.
   no excuse for poor behavior and poor manners. We might all experience some
   frustration now and then, but we cannot allow that frustration to turn into a
   personal attack. It's important to remember that a community where people feel
-  uncomfortable or threatened is not productive. Members of the *dmorph*
+  uncomfortable or threatened is not productive. Members of the *DMorph*
   community should be respectful when dealing with other members as well as with
-  people outside the *dmorph* community and with user groups/conferences,
+  people outside the *DMorph* community and with user groups/conferences,
   user group/conference organizers.
 
 * __Be careful in the words that you choose.__ Remember that sexist, racist, and
@@ -43,14 +47,14 @@ mailing list, and other forums such as Skype, Google+ Hangouts, etc.
   appropriate for the community.
 
 __When we disagree, we try to understand why.__ Disagreements, both social and
-technical, happen all the time and *dmorph* is no exception. It is important
+technical, happen all the time and *DMorph* is no exception. It is important
 that we resolve disagreements and differing views constructively. Remember that
-we're different. The strength of *dmorph* comes from its varied community,
+we're different. The strength of *DMorph* comes from its varied community,
 people from a wide range of backgrounds. Different people have different
 perspectives on issues. Being unable to understand why someone holds a viewpoint
-doesn't mean that they're wrong. Don't forget that it is human to err and
-blaming each other doesn't get us anywhere, rather offer to help resolving
-issues and to help learn from mistakes.
+doesn't mean that they're wrong. Don't forget that it is human to make errors,
+and blaming each other doesn't get us anywhere. Rather, offer to help resolve
+issues and learn from mistakes.
 
 *Original text courtesy of the
 [Speak Up! project](http://web.archive.org/web/20141109123859/http://speakup.io/coc.html).*

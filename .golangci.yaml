@@ -1,4 +1,4 @@
-# Copyright the dmorph contributors.
+# SPDX-FileCopyrightText: 2025 The DMorph contributors.
 # SPDX-License-Identifier: MPL-2.0
 
 # Configuration file for golangci-lint
@@ -70,9 +70,6 @@ linters:
         mnd:
             ignored-numbers:
                 - "2"
-
-        paralleltest:
-            ignore-missing: true
 
         perfsprint:
             errorf: false

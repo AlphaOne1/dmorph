@@ -1,10 +1,10 @@
-# Copyright the DMorph contributors.
+# SPDX-FileCopyrightText: 2025 The DMorph contributors.
 # SPDX-License-Identifier: MPL-2.0
 #
 # For most projects, this workflow file will not need changing; you simply need
 # to commit it to your repository.
 #
-# You may wish to alter this file to override the set of languages analyzed,
+# You may wish to alter this file to override the set of languages analyzed
 # or to provide custom queries or build logic.
 #
 # ******** NOTE ********
@@ -22,7 +22,7 @@ on:
     schedule:
       - cron: '28 4 * * 2'
 
-# Declare default permissions as read only.
+# Declare default permissions as read-only.
 permissions: read-all
 
 jobs:
@@ -82,7 +82,7 @@ jobs:
                 # For more details on CodeQL's query packs, refer to: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
                 # queries: security-extended,security-and-quality
 
-          # If the "analyze" step fails for one of the languages you are analyzing with
+          # If the analyze-step fails for one of the languages you are analyzing with
           # "We were unable to automatically build your code", modify the matrix above
           # to set the build mode to "manual" for that language. Then modify this step
           # to build your code.

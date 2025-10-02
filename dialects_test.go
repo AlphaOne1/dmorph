@@ -1,9 +1,10 @@
-// Copyright the DMorph contributors.
+// SPDX-FileCopyrightText: 2025 The DMorph contributors.
 // SPDX-License-Identifier: MPL-2.0
 
 package dmorph_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,6 +16,8 @@ import (
 // TestDialectStatements verifies that each database dialect has valid and
 // sufficiently complete SQL statement templates.
 func TestDialectStatements(t *testing.T) {
+	t.Parallel()
+
 	// we cannot run tests against all databases, but at least we can test
 	// that the statements for the databases are somehow filled
 	tests := []struct {
@@ -30,45 +33,53 @@ func TestDialectStatements(t *testing.T) {
 		{name: "SQLite", caller: dmorph.DialectSQLite},
 	}
 
-	for k, v := range tests {
-		d := v.caller()
+	for k, test := range tests {
+		t.Run(fmt.Sprintf("TestDialectStatements-%d", k), func(t *testing.T) {
+			t.Parallel()
 
-		if len(d.CreateTemplate) < 10 {
-			t.Errorf("%v: create template is too short for %v", k, v.name)
-		}
-		assert.Contains(t, d.CreateTemplate, "%s",
-			"no table name placeholder in create template for", v.name)
+			dialect := test.caller()
 
-		if len(d.AppliedTemplate) < 10 {
-			t.Errorf("%v: applied template is too short for %v", k, v.name)
-		}
-		assert.Contains(t, d.AppliedTemplate, "%s",
-			"no table name placeholder in applied template for", v.name)
+			if len(dialect.CreateTemplate) < 10 {
+				t.Errorf("create template is too short for %v", test.name)
+			}
+			assert.Contains(t, dialect.CreateTemplate, "%s",
+				"no table name placeholder in create template for", test.name)
 
-		if len(d.RegisterTemplate) < 10 {
-			t.Errorf("%v: register template is too short for %v", k, v.name)
-		}
-		assert.Contains(t, d.RegisterTemplate, "%s",
-			"no table name placeholder in register template for", v.name)
+			if len(dialect.AppliedTemplate) < 10 {
+				t.Errorf("applied template is too short for %v", test.name)
+			}
+			assert.Contains(t, dialect.AppliedTemplate, "%s",
+				"no table name placeholder in applied template for", test.name)
+
+			if len(dialect.RegisterTemplate) < 10 {
+				t.Errorf("register template is too short for %v", test.name)
+			}
+			assert.Contains(t, dialect.RegisterTemplate, "%s",
+				"no table name placeholder in register template for", test.name)
+		})
 	}
 }
 
 // TestCallsOnClosedDB verifies that methods fail as expected when called on a closed database connection.
 func TestCallsOnClosedDB(t *testing.T) {
+	t.Parallel()
+
 	db := openTempSQLite(t)
 	require.NoError(t, db.Close())
 
-	assert.Error(t,
+	require.Error(t,
 		dmorph.DialectSQLite().EnsureMigrationTableExists(t.Context(), db, "irrelevant"),
 		"expected error on closed database")
 
 	_, err := dmorph.DialectSQLite().AppliedMigrations(t.Context(), db, "irrelevant")
-	assert.Error(t, err, "expected error on closed database")
+	require.Error(t, err, "expected error on closed database")
 }
 
 // TestEnsureMigrationTableExistsSQLError tests the EnsureMigrationTableExists function
 // for handling SQL errors during execution.
 func TestEnsureMigrationTableExistsSQLError(t *testing.T) {
+	t.Parallel()
+
 	dialect := dmorph.BaseDialect{
 		CreateTemplate: `
             CRATE TABLE test (
@@ -85,6 +96,8 @@ func TestEnsureMigrationTableExistsSQLError(t *testing.T) {
 // TestEnsureMigrationTableExistsCommitError tests the behavior of EnsureMigrationTableExists
 // when a commit error occurs.
 func TestEnsureMigrationTableExistsCommitError(t *testing.T) {
+	t.Parallel()
+
 	dialect := dmorph.BaseDialect{
 		CreateTemplate: `
 			CREATE TABLE t0 (

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 The DMorph contributors.
+// SPDX-License-Identifier: MPL-2.0
+
 package dmorph
 
 import (
@@ -7,10 +10,12 @@ import (
 
 // The exported names in this file are only used for internal testing and are not part of the public API.
 
+//nolint:gochecknoglobals // these are used for testing and not visible or used otherwise
 var (
 	TapplyStepsStream    = applyStepsStream
 	TmigrationFromFileFS = migrationFromFileFS
 	TmigrationOrder      = migrationOrder
+	TwrapIfError         = wrapIfError
 )
 
 func (m *Morpher) TapplyMigrations(ctx context.Context, db *sql.DB, lastMigration string) error {

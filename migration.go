@@ -1,6 +1,7 @@
-// Copyright the DMorph contributors.
+// SPDX-FileCopyrightText: 2025 The DMorph contributors.
 // SPDX-License-Identifier: MPL-2.0
 
+// Package dmorph provides a simple database migration framework.
 package dmorph
 
 import (
@@ -131,22 +132,22 @@ func WithTableName(tableName string) func(*Morpher) error {
 // It ensures that the newly created Morpher has migrations and a database dialect configured.
 // If no migration table name is given, the default MigrationTableName is used instead.
 func NewMorpher(options ...MorphOption) (*Morpher, error) {
-	m := &Morpher{
+	morpher := &Morpher{
 		TableName: MigrationTableName,
 		Log:       slog.Default(),
 	}
 
 	for _, option := range options {
-		if err := option(m); err != nil {
+		if err := option(morpher); err != nil {
 			return nil, err
 		}
 	}
 
-	if validErr := m.IsValid(); validErr != nil {
+	if validErr := morpher.IsValid(); validErr != nil {
 		return nil, validErr
 	}
 
-	return m, nil
+	return morpher, nil
 }
 
 // IsValid checks if the Morpher contains all the required information to run.

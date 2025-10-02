@@ -1,4 +1,4 @@
-// Copyright the DMorph contributors.
+// SPDX-FileCopyrightText: 2025 The DMorph contributors.
 // SPDX-License-Identifier: MPL-2.0
 
 package dmorph
@@ -13,6 +13,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -39,10 +40,10 @@ func WithMigrationFromFile(name string) MorphOption {
 		morpher.Migrations = append(morpher.Migrations, FileMigration{
 			Name: name,
 			migrationFunc: func(ctx context.Context, tx *sql.Tx, migration string) error {
-				m, mErr := os.Open(migration)
+				m, mErr := os.Open(filepath.Clean(migration))
 
 				if mErr != nil {
-					return mErr
+					return wrapIfError("could not open file "+migration, mErr)
 				}
 
 				defer func() { _ = m.Close() }()
@@ -82,7 +83,7 @@ func WithMigrationsFromFS(d fs.FS) MorphOption {
 			}
 		}
 
-		return err
+		return wrapIfError("could not read directory", err)
 	}
 }
 
@@ -95,7 +96,7 @@ func migrationFromFileFS(name string, dir fs.FS, log *slog.Logger) FileMigration
 			m, mErr := dir.Open(migration)
 
 			if mErr != nil {
-				return mErr
+				return wrapIfError("could not open file migration", mErr)
 			}
 
 			defer func() { _ = m.Close() }()
@@ -165,5 +166,5 @@ func applyStepsStream(ctx context.Context, tx *sql.Tx, r io.Reader, migrationID 
 		}
 	}
 
-	return scanner.Err()
+	return wrapIfError("scanner error", scanner.Err())
 }

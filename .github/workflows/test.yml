@@ -1,4 +1,4 @@
-# Copyright the DMorph contributors.
+# SPDX-FileCopyrightText: 2025 The DMorph contributors.
 # SPDX-License-Identifier: MPL-2.0
 
 name: Tests
@@ -11,11 +11,15 @@ on:
         branches:
           - master
 
-# Declare default permissions as read only.
+# Declare default permissions as read-only.
 permissions: read-all
 
 jobs:
     FormatCheck:
+        strategy:
+            matrix:
+                go-version:
+                  - "stable"
         runs-on: ubuntu-latest
         steps:
           - name: Harden Runner
@@ -23,21 +27,24 @@ jobs:
             with:
                 egress-policy: audit
 
+          - name: Install Go
+            uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+            with:
+                go-version: ${{matrix.go-version}}
+
           - name: Checkout
             uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
             with:
                 fetch-depth: 1
-
-          - name: Install Go
-            uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
-            with:
-                go-version-file: go.mod
-                check-latest: true
 
           - name: FormatCheck
             run: if [ `go fmt ./... | wc -l` -gt 0 ] ; then echo "Found unformatted code" ; exit 1 ; else exit 0 ; fi
 
     StaticCheck:
+        strategy:
+            matrix:
+                go-version:
+                  - "stable"
         runs-on: ubuntu-latest
         steps:
           - name: Harden Runner
@@ -45,46 +52,51 @@ jobs:
             with:
                 egress-policy: audit
 
+          - name: Install Go
+            uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+            with:
+                go-version: ${{matrix.go-version}}
+
           - name: Checkout
             uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
             with:
                 fetch-depth: 1
-
-          - name: Install Go
-            id: install_go
-            uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
-            with:
-                go-version-file: go.mod
-                check-latest: true
 
           - name: StaticCheck
             uses: dominikh/staticcheck-action@024238d2898c874f26d723e7d0ff4308c35589a2 # v1.4.0
             with:
                 version: latest
                 install-go: false
-                cache-key: ${{ steps.install_go.output.go-version }}
+                cache-key: ${{matrix.go-version}}
 
     Test:
-        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                go-version:
+                  - "stable"
+                platform:
+                  #- macos-latest
+                  - ubuntu-latest
+                  #- windows-latest
+        runs-on: ${{matrix.platform}}
         steps:
           - name: Harden Runner
             uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
             with:
                 egress-policy: audit
 
+          - name: Install Go
+            uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+            with:
+                go-version: ${{matrix.go-version}}
+
           - name: Checkout
             uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
             with:
                 fetch-depth: 1
 
-          - name: Install Go
-            uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
-            with:
-                go-version-file: go.mod
-                check-latest: true
-
           - name: Test
-            run: go run gotest.tools/gotestsum@latest --junitfile junit.xml -- -v `go list ./...` --covermode=count --coverpkg=./... --coverprofile=coverage.txt
+            run: go tool gotestsum --junitfile junit.xml -- -race -v `go list ./...` --covermode=atomic --coverpkg=./... --coverprofile=coverage.txt
 
           - name: Upload test results to Codecov
             if: ${{ !cancelled() }}
@@ -102,23 +114,32 @@ jobs:
 
     # This action is mainly composed of snippets of github.com/jidicula/go-fuzz-action
 #    FuzzTest:
-#        runs-on: ubuntu-latest
+#        strategy:
+#            matrix:
+#                go-version:
+#                  - "stable"
+#                platform:
+#                  #- macos-latest
+#                  - ubuntu-latest
+#                  #- windows-latest
+#                packages:
+#                  - ./
+#        runs-on: ${{ matrix.platform }}
 #        steps:
 #          - name: Harden Runner
 #            uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
 #            with:
 #                egress-policy: audit
 #
+#          - name: Install Go
+#            uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+#            with:
+#                go-version: ${{matrix.go-version}}
+#
 #          - name: Checkout
 #            uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 #            with:
 #                fetch-depth: 1
-#
-#          - name: Install Go
-#            uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
-#            with:
-#                go-version-file: go.mod
-#                check-latest: true
 #
 #          - name: Run Fuzz Test
 #            shell: bash
@@ -126,7 +147,7 @@ jobs:
 #
 #          - name: Upload fuzz failure seed corpus as run artifact
 #            if: failure()
-#            uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+#            uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
 #            with:
 #                name: testdata
 #                path: testdata
