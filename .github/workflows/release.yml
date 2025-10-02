@@ -1,0 +1,113 @@
+# SPDX-FileCopyrightText: 2025 The templig contributors.
+# SPDX-License-Identifier: MPL-2.0
+
+name: Release
+
+on:
+    release:
+        types:
+            - published
+
+permissions: read-all
+
+concurrency:
+    group: release-${{ github.event.release.tag_name }}
+    cancel-in-progress: true
+
+jobs:
+    Build:
+        permissions:
+            contents: write
+        runs-on: ubuntu-latest
+        steps:
+            - name: Harden Runner
+              uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
+              with:
+                  egress-policy: audit
+
+            - name: Checkout
+              uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+              with:
+                  fetch-depth: 0
+                  ref: ${{ github.event.release.tag_name }}
+
+            - name: Generate source archive
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  
+                  TAG=`echo "${{ github.event.release.tag_name }}" | sed 's/\//-/g'`
+                  git archive \
+                    --format=tar.gz \
+                    --prefix="templig-src-${TAG}/" \
+                    --output="templig-src-${TAG}.tar.gz" \
+                    "${{ github.event.release.tag_name }}"
+
+            - name: Upload Release (via GitHub CLI)
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  gh release upload "${{ github.event.release.tag_name }}" templig-src-*.tar.gz --clobber
+
+    ChecksumReleaseAssets:
+        needs: Build
+        runs-on: ubuntu-latest
+        name: Checksum Release Assets
+        outputs:
+            hashBase64File: ${{ steps.hashes.outputs.handle }}
+        steps:
+            - name: Harden Runner
+              uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
+              with:
+                  egress-policy: audit
+
+            - name: Checkout
+              uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+              with:
+                  fetch-depth: 1
+
+            - name: Download all release assets via GitHub CLI
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  
+                  mkdir -p release-assets
+                  cd release-assets
+                  # gets all assets of the release
+                  gh release download "${{ github.event.release.tag_name }}" --clobber
+                  echo "Downloaded assets:"
+                  ls -lah
+
+            - name: Generate Checksums
+              working-directory: release-assets
+              run: |
+                  set -euo pipefail
+                  
+                  # Robustly hash all regular files in this directory, then base64 and write via tee.
+                  LC_ALL=C find . -maxdepth 1 -type f -printf '%P\0' \
+                    | sort -z \
+                    | xargs -0 sha256sum -- \
+                    | base64 -w0 \
+                    > check.sha256
+
+            - name: Upload Checksums
+              id: hashes
+              uses: slsa-framework/slsa-github-generator/actions/generator/generic/create-base64-subjects-from-file@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # 2.1.0
+              with:
+                  path: release-assets/check.sha256
+
+    AssetProvenance:
+        permissions:
+            actions:  read  # Needed for detection of GitHub Actions environment.
+            id-token: write # Needed for provenance signing and ID
+            contents: write # Needed for release uploads
+        needs: ChecksumReleaseAssets
+        uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0 #must have semver!
+        with:
+            base64-subjects-as-file: |
+                ${{ needs.ChecksumReleaseAssets.outputs.hashBase64File }}
+            upload-assets: true
+            upload-tag-name: "${{ github.event.release.tag_name }}"

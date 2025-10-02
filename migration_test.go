@@ -1,4 +1,4 @@
-// Copyright the DMorph contributors.
+// SPDX-FileCopyrightText: 2025 The DMorph contributors.
 // SPDX-License-Identifier: MPL-2.0
 
 package dmorph_test
@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -29,7 +30,7 @@ func prepareDB() (string, error) {
 	dbFile, dbFileErr := os.CreateTemp("", "")
 
 	if dbFileErr != nil {
-		return "", dbFileErr
+		return "", dmorph.TwrapIfError("could not create temporary db file", dbFileErr) //nolint:wrapcheck
 	}
 
 	result = dbFile.Name()
@@ -55,6 +56,8 @@ func openTempSQLite(t *testing.T) *sql.DB {
 
 // TestMigration tests the happy flow.
 func TestMigration(t *testing.T) {
+	t.Parallel()
+
 	db := openTempSQLite(t)
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
@@ -71,6 +74,8 @@ func TestMigration(t *testing.T) {
 
 // TestMigrationUpdate tests the happy flow of updating on existing migrations.
 func TestMigrationUpdate(t *testing.T) {
+	t.Parallel()
+
 	db := openTempSQLite(t)
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
@@ -98,11 +103,13 @@ func (m TestMigrationImpl) Key() string { return "TestMigration" }
 func (m TestMigrationImpl) Migrate(ctx context.Context, tx *sql.Tx) error {
 	_, err := tx.ExecContext(ctx, "CREATE TABLE t0 (id INTEGER PRIMARY KEY)")
 
-	return err
+	return dmorph.TwrapIfError("could not migrate", err) //nolint:wrapcheck
 }
 
 // TestWithMigrations tests the adding of migrations using WithMigrations.
 func TestWithMigrations(t *testing.T) {
+	t.Parallel()
+
 	db := openTempSQLite(t)
 
 	runErr := dmorph.Run(t.Context(),
@@ -116,6 +123,8 @@ func TestWithMigrations(t *testing.T) {
 // TestMigrationUnableToCreateMorpher tests to use the Run function without any
 // useful parameter.
 func TestMigrationUnableToCreateMorpher(t *testing.T) {
+	t.Parallel()
+
 	runErr := dmorph.Run(t.Context(), nil)
 
 	assert.Error(t, runErr, "morpher should not have run")
@@ -123,6 +132,8 @@ func TestMigrationUnableToCreateMorpher(t *testing.T) {
 
 // TestMigrationTooOld tests what happens if the applied migrations are too old.
 func TestMigrationTooOld(t *testing.T) {
+	t.Parallel()
+
 	db := openTempSQLite(t)
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
@@ -146,6 +157,8 @@ func TestMigrationTooOld(t *testing.T) {
 
 // TestMigrationUnrelated0 tests what happens if the applied migrations are unrelated to existing ones.
 func TestMigrationUnrelated0(t *testing.T) {
+	t.Parallel()
+
 	db := openTempSQLite(t)
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
@@ -169,6 +182,8 @@ func TestMigrationUnrelated0(t *testing.T) {
 
 // TestMigrationUnrelated1 tests what happens if the applied migrations are unrelated to existing ones.
 func TestMigrationUnrelated1(t *testing.T) {
+	t.Parallel()
+
 	db := openTempSQLite(t)
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
@@ -193,6 +208,8 @@ func TestMigrationUnrelated1(t *testing.T) {
 // TestMigrationAppliedUnordered tests the case, that somehow the migrations in the
 // database are registered not in the order of their keys.
 func TestMigrationAppliedUnordered(t *testing.T) {
+	t.Parallel()
+
 	db := openTempSQLite(t)
 
 	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
@@ -221,6 +238,8 @@ func TestMigrationAppliedUnordered(t *testing.T) {
 
 // TestMigrationOrder checks that the migrations ordering function works as expected.
 func TestMigrationOrder(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		m0    dmorph.Migration
 		m1    dmorph.Migration
@@ -244,14 +263,20 @@ func TestMigrationOrder(t *testing.T) {
 	}
 
 	for k, v := range tests {
-		res := dmorph.TmigrationOrder(v.m0, v.m1)
+		t.Run(fmt.Sprintf("TestMigrationOrder %v", k), func(t *testing.T) {
+			t.Parallel()
 
-		assert.Equal(t, v.order, res, "order of migrations is wrong for test %v", k)
+			res := dmorph.TmigrationOrder(v.m0, v.m1)
+
+			assert.Equal(t, v.order, res, "order of migrations is wrong for test %v", k)
+		})
 	}
 }
 
 // TestMigrationIsValid checks the validity checks for migrations.
 func TestMigrationIsValid(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		m   dmorph.Morpher
 		err error
@@ -299,31 +324,39 @@ func TestMigrationIsValid(t *testing.T) {
 	}
 
 	for k, v := range tests {
-		err := v.m.IsValid()
+		t.Run(fmt.Sprintf("TestMigrationIsValid %v", k), func(t *testing.T) {
+			t.Parallel()
 
-		assert.ErrorIs(t, err, v.err, "error is wrong for test %v", k)
+			err := v.m.IsValid()
+
+			assert.ErrorIs(t, err, v.err, "error is wrong for test %v", k)
+		})
 	}
 }
 
 // TestMigrationWithLogger validates the creation of a Morpher with a logger and ensures
 // the logger is applied correctly.
 func TestMigrationWithLogger(t *testing.T) {
-	l := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+	t.Parallel()
+
+	newLog := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelWarn,
 	}))
 
 	morpher, err := dmorph.NewMorpher(
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationFromFile("testData/01_base_table.sql"),
-		dmorph.WithLog(l),
+		dmorph.WithLog(newLog),
 	)
 
-	assert.NoError(t, err, "morpher could not be created")
-	assert.Equal(t, l, morpher.Log, "logger was not set correctly")
+	require.NoError(t, err, "morpher could not be created")
+	assert.Equal(t, newLog, morpher.Log, "logger was not set correctly")
 }
 
 // TestMigrationWithoutMigrations ensures that creating a Morpher instance without migrations results in an error.
 func TestMigrationWithoutMigrations(t *testing.T) {
+	t.Parallel()
+
 	_, err := dmorph.NewMorpher(
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 	)
@@ -334,19 +367,23 @@ func TestMigrationWithoutMigrations(t *testing.T) {
 // TestMigrationWithTableNameValid verifies the correct creation of a Morpher
 // with a valid custom table name configuration.
 func TestMigrationWithTableNameValid(t *testing.T) {
+	t.Parallel()
+
 	morpher, err := dmorph.NewMorpher(
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationFromFile("testData/01_base_table.sql"),
 		dmorph.WithTableName("dimorphodon"),
 	)
 
-	assert.NoError(t, err, "morpher could not be created")
+	require.NoError(t, err, "morpher could not be created")
 	assert.Equal(t, "dimorphodon", morpher.TableName, "table name was not set correctly")
 }
 
 // TestMigrationWithTableNameInvalidSize verifies that creating a Morpher
 // with an invalid table name size produces an error.
 func TestMigrationWithTableNameInvalidSize(t *testing.T) {
+	t.Parallel()
+
 	_, err := dmorph.NewMorpher(
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationFromFile("testData/01_base_table.sql"),
@@ -359,6 +396,8 @@ func TestMigrationWithTableNameInvalidSize(t *testing.T) {
 // TestMigrationWithTableNameInvalidChars ensures that creating a Morpher
 // fails when the table name contains invalid characters.
 func TestMigrationWithTableNameInvalidChars(t *testing.T) {
+	t.Parallel()
+
 	_, err := dmorph.NewMorpher(
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithMigrationFromFile("testData/01_base_table.sql"),
@@ -370,6 +409,8 @@ func TestMigrationWithTableNameInvalidChars(t *testing.T) {
 
 // TestMigrationRunInvalid verifies that running a Morpher with invalid configuration results in an error.
 func TestMigrationRunInvalid(t *testing.T) {
+	t.Parallel()
+
 	morpher := dmorph.Morpher{}
 
 	runErr := morpher.Run(t.Context(), nil)
@@ -380,10 +421,12 @@ func TestMigrationRunInvalid(t *testing.T) {
 // TestMigrationRunInvalidCreate tests the behavior of running a migration
 // with an invalid CreateTemplate in the dialect.
 func TestMigrationRunInvalidCreate(t *testing.T) {
+	t.Parallel()
+
 	db := openTempSQLite(t)
 
 	dialect := dmorph.DialectSQLite()
-	dialect.CreateTemplate = "utter nonsense"
+	dialect.CreateTemplate = "utter nonsense 0"
 
 	morpher, morpherErr := dmorph.NewMorpher(
 		dmorph.WithDialect(dialect),
@@ -398,10 +441,12 @@ func TestMigrationRunInvalidCreate(t *testing.T) {
 
 // TestMigrationRunInvalidApplied tests the failure scenario where the AppliedTemplate of the dialect is invalid.
 func TestMigrationRunInvalidApplied(t *testing.T) {
+	t.Parallel()
+
 	db := openTempSQLite(t)
 
 	dialect := dmorph.DialectSQLite()
-	dialect.AppliedTemplate = "utter nonsense"
+	dialect.AppliedTemplate = "utter nonsense 1"
 
 	morpher, morpherErr := dmorph.NewMorpher(
 		dmorph.WithDialect(dialect),
@@ -416,6 +461,8 @@ func TestMigrationRunInvalidApplied(t *testing.T) {
 
 // TestMigrationApplyInvalidDB verifies that applying migrations to an invalid or closed database results in an error.
 func TestMigrationApplyInvalidDB(t *testing.T) {
+	t.Parallel()
+
 	db := openTempSQLite(t)
 
 	morpher, morpherErr := dmorph.NewMorpher(
@@ -431,6 +478,8 @@ func TestMigrationApplyInvalidDB(t *testing.T) {
 
 // TestMigrationApplyUnableRegister tests the behavior when the migration registration fails due to an invalid template.
 func TestMigrationApplyUnableRegister(t *testing.T) {
+	t.Parallel()
+
 	db := openTempSQLite(t)
 
 	morpher, morpherErr := dmorph.NewMorpher(
@@ -442,7 +491,7 @@ func TestMigrationApplyUnableRegister(t *testing.T) {
 	d, dialectOK := morpher.Dialect.(dmorph.BaseDialect)
 	require.True(t, dialectOK, "dialect is not a BaseDialect")
 
-	d.RegisterTemplate = "utter nonsense"
+	d.RegisterTemplate = "utter nonsense 2"
 	morpher.Dialect = d
 
 	assert.Error(t,
@@ -453,6 +502,8 @@ func TestMigrationApplyUnableRegister(t *testing.T) {
 // TestMigrationApplyUnableCommit tests the scenario where a migration application fails
 // due to inability to commit a transaction.
 func TestMigrationApplyUnableCommit(t *testing.T) {
+	t.Parallel()
+
 	db := openTempSQLite(t)
 
 	morpher, morpherErr := dmorph.NewMorpher(

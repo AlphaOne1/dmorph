@@ -1,7 +1,7 @@
-# Copyright the DMorph contributors.
+# SPDX-FileCopyrightText: 2025 The DMorph contributors.
 # SPDX-License-Identifier: MPL-2.0
 #
-# This workflow uses actions that are not certified by GitHub. They are provided
+# This workflow uses actions not certified by GitHub. They are provided
 # by a third-party and are governed by separate terms of service, privacy
 # policy, and support documentation.
 
@@ -9,16 +9,15 @@ name: Scorecard supply-chain security
 on:
     # For Branch-Protection check. Only the default branch is supported. See
     # https://github.com/ossf/scorecard/blob/main/docs/checks.md#branch-protection
-    branch_protection_rule:
-
-    # To guarantee, Maintained check is occasionally updated. See
+    branch_protection_rule: {}
+    # To guarantee Maintained-check is occasionally updated. See
     # https://github.com/ossf/scorecard/blob/main/docs/checks.md#maintained
     schedule:
       - cron: '36 3 * * 2'
     push:
         branches: [ "master" ]
 
-# Declare default permissions as read only.
+# Declare default permissions as read-only.
 permissions: read-all
 
 jobs:
@@ -26,7 +25,7 @@ jobs:
         name: Scorecard analysis
         runs-on: ubuntu-latest
         permissions:
-            # Needed to upload the results to code-scanning dashboard.
+            # Needed to upload the results to the code-scanning dashboard.
             security-events: write
             # Needed to publish results and get a badge (see publish_results below).
             id-token: write
@@ -36,7 +35,7 @@ jobs:
 
         steps:
           - name: Harden Runner
-            uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911 # v2.13.0
+            uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
             with:
                 egress-policy: audit
 
@@ -77,6 +76,6 @@ jobs:
           # Upload the results to GitHub's code scanning dashboard (optional).
           # Commenting out will disable upload of results to your repo's Code Scanning dashboard
           - name: "Upload to code-scanning"
-            uses: github/codeql-action/upload-sarif@3c3833e0f8c1c83d449a7478aa59c036a9165498 # v3.29.11
+            uses: github/codeql-action/upload-sarif@3599b3baa15b485a2e49ef411a7a4bb2452e7f93 # v3.30.5
             with:
                 sarif_file: results.sarif

@@ -1,3 +1,7 @@
+<!-- SPDX-FileCopyrightText: 2025 The DMorph contributors.
+     SPDX-License-Identifier: MPL-2.0
+-->
+
 <!-- markdownlint-disable MD013 MD033 MD041 -->
 <p align="center">
     <img src="dmorph_logo.svg" width="40%" alt="Logo"><br>

@@ -1,4 +1,4 @@
-// Copyright the DMorph contributors.
+// SPDX-FileCopyrightText: 2025 The DMorph contributors.
 // SPDX-License-Identifier: MPL-2.0
 
 package dmorph
@@ -24,7 +24,7 @@ func (b BaseDialect) EnsureMigrationTableExists(ctx context.Context, db *sql.DB,
 	tx, err := db.BeginTx(ctx, nil)
 
 	if err != nil {
-		return err
+		return wrapIfError("could not start transaction", err)
 	}
 
 	// Safety net for unexpected panics
@@ -58,7 +58,7 @@ func (b BaseDialect) AppliedMigrations(ctx context.Context, db *sql.DB, tableNam
 	rows, rowsErr := db.QueryContext(ctx, fmt.Sprintf(b.AppliedTemplate, tableName))
 
 	if rowsErr != nil {
-		return nil, rowsErr
+		return nil, wrapIfError("could not get applied migrations", rowsErr)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -81,5 +81,5 @@ func (b BaseDialect) RegisterMigration(ctx context.Context, tx *sql.Tx, id strin
 	_, err := tx.ExecContext(ctx, fmt.Sprintf(b.RegisterTemplate, tableName),
 		sql.Named("id", id))
 
-	return err
+	return wrapIfError("could not register migration", err)
 }

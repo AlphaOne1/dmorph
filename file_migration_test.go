@@ -1,4 +1,4 @@
-// Copyright the DMorph contributors.
+// SPDX-FileCopyrightText: 2025 The DMorph contributors.
 // SPDX-License-Identifier: MPL-2.0
 
 package dmorph_test
@@ -16,6 +16,8 @@ import (
 )
 
 func TestWithMigrationFromFile(t *testing.T) {
+	t.Parallel()
+
 	db := openTempSQLite(t)
 
 	runErr := dmorph.Run(t.Context(),
@@ -27,6 +29,8 @@ func TestWithMigrationFromFile(t *testing.T) {
 }
 
 func TestWithMigrationFromFileError(t *testing.T) {
+	t.Parallel()
+
 	db := openTempSQLite(t)
 
 	runErr := dmorph.Run(t.Context(),
@@ -41,6 +45,8 @@ func TestWithMigrationFromFileError(t *testing.T) {
 // TestMigrationFromFileFSError validates that migrationFromFileFS returns an error
 // when the specified file does not exist.
 func TestMigrationFromFileFSError(t *testing.T) {
+	t.Parallel()
+
 	dir := os.DirFS("testData")
 
 	mig := dmorph.TmigrationFromFileFS("nonexistent", dir, slog.Default())
@@ -52,6 +58,8 @@ func TestMigrationFromFileFSError(t *testing.T) {
 
 // TestApplyStepsStreamError tests error handling in applyStepsStream.
 func TestApplyStepsStreamError(t *testing.T) {
+	t.Parallel()
+
 	db := openTempSQLite(t)
 
 	buf := bytes.Buffer{}
@@ -76,7 +84,7 @@ func TestApplyStepsStreamError(t *testing.T) {
 
 	err = dmorph.TapplyStepsStream(t.Context(), tx, &buf, "test", slog.Default())
 
-	assert.Error(t, err, "expected error")
+	require.Error(t, err, "expected error")
 
 	_ = tx.Rollback()
 }
