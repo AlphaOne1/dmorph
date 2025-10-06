@@ -38,7 +38,7 @@ jobs:
                 severity: 'CRITICAL'
 
           - name: Upload Trivy scan results to GitHub Security tab
-            uses: github/codeql-action/upload-sarif@3599b3baa15b485a2e49ef411a7a4bb2452e7f93 # v3.30.5
+            uses: github/codeql-action/upload-sarif@64d10c13136e1c5bce3e5fbde8d4906eeaafc885 # v3.30.6
             with:
                 sarif_file: 'trivy-results.sarif'
 
@@ -64,7 +64,7 @@ jobs:
                 args: --output.sarif.path=golangci-lint-results.sarif
 
           - name: Upload golangci-lint results to GitHub Security tab
-            uses: github/codeql-action/upload-sarif@3599b3baa15b485a2e49ef411a7a4bb2452e7f93 # v3.30.5
+            uses: github/codeql-action/upload-sarif@64d10c13136e1c5bce3e5fbde8d4906eeaafc885 # v3.30.6
             with:
                 sarif_file: golangci-lint-results.sarif
 
@@ -108,6 +108,6 @@ jobs:
 
           - name: Upload govulncheck results to GitHub Security tab
             if: ${{ steps.PrintSarif.outputs.hasResults == 'true' }}
-            uses: github/codeql-action/upload-sarif@3599b3baa15b485a2e49ef411a7a4bb2452e7f93 # v3.30.5
+            uses: github/codeql-action/upload-sarif@64d10c13136e1c5bce3e5fbde8d4906eeaafc885 # v3.30.6
             with:
                 sarif_file: govulncheck-results.sarif
