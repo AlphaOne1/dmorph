@@ -98,7 +98,7 @@ jobs:
             id: PrintSarif
             run:  |
                 cat govulncheck-results.sarif
-                
+
                 if grep results govulncheck-results.sarif
                 then
                     echo "hasResults=true" >> $GITHUB_OUTPUT

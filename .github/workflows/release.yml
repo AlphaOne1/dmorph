@@ -35,7 +35,7 @@ jobs:
               shell: bash
               run: |
                   set -euo pipefail
-                  
+
                   TAG=`echo "${{ github.event.release.tag_name }}" | sed 's/\//-/g'`
                   git archive \
                     --format=tar.gz \
@@ -73,7 +73,7 @@ jobs:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   set -euo pipefail
-                  
+
                   mkdir -p release-assets
                   cd release-assets
                   # gets all assets of the release
@@ -85,7 +85,7 @@ jobs:
               working-directory: release-assets
               run: |
                   set -euo pipefail
-                  
+
                   # Robustly hash all regular files in this directory, then base64 and write via tee.
                   LC_ALL=C find . -maxdepth 1 -type f -printf '%P\0' \
                     | sort -z \

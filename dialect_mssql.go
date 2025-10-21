@@ -8,8 +8,8 @@ func DialectMSSQL() BaseDialect {
 	return BaseDialect{
 		CreateTemplate: `
             IF NOT EXISTS (
-                SELECT * 
-                FROM sysobjects 
+                SELECT *
+                FROM sysobjects
                 WHERE name = '%s' AND xtype = 'U'
             )
             CREATE TABLE [%s] (

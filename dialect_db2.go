@@ -9,8 +9,8 @@ func DialectDB2() BaseDialect {
 		CreateTemplate: `
             BEGIN
                 IF NOT EXISTS (
-                    SELECT 1 
-                    FROM SYSIBM.SYSTABLES 
+                    SELECT 1
+                    FROM SYSIBM.SYSTABLES
                     WHERE NAME = '%s' AND TYPE = 'T'
                 )
                 THEN
