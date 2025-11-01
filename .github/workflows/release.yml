@@ -6,7 +6,7 @@ name: Release
 on:
     release:
         types:
-            - published
+          - published
 
 permissions: read-all
 
@@ -20,36 +20,36 @@ jobs:
             contents: write
         runs-on: ubuntu-latest
         steps:
-            - name: Harden Runner
-              uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
-              with:
-                  egress-policy: audit
+          - name: Harden Runner
+            uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
+            with:
+                egress-policy: audit
 
-            - name: Checkout
-              uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-              with:
-                  fetch-depth: 0
-                  ref: ${{ github.event.release.tag_name }}
+          - name: Checkout
+            uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+            with:
+                fetch-depth: 0
+                ref: ${{ github.event.release.tag_name }}
 
-            - name: Generate source archive
-              shell: bash
-              run: |
-                  set -euo pipefail
+          - name: Generate source archive
+            shell: bash
+            run: |
+                set -euo pipefail
 
-                  TAG=`echo "${{ github.event.release.tag_name }}" | sed 's/\//-/g'`
-                  git archive \
-                    --format=tar.gz \
-                    --prefix="dmorph-src-${TAG}/" \
-                    --output="dmorph-src-${TAG}.tar.gz" \
-                    "${{ github.event.release.tag_name }}"
+                TAG=`echo "${{ github.event.release.tag_name }}" | sed 's/\//-/g'`
+                git archive \
+                  --format=tar.gz \
+                  --prefix="dmorph-src-${TAG}/" \
+                  --output="dmorph-src-${TAG}.tar.gz" \
+                  "${{ github.event.release.tag_name }}"
 
-            - name: Upload Release (via GitHub CLI)
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              shell: bash
-              run: |
-                  set -euo pipefail
-                  gh release upload "${{ github.event.release.tag_name }}" dmorph-src-*.tar.gz --clobber
+          - name: Upload Release (via GitHub CLI)
+            env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            shell: bash
+            run: |
+                set -euo pipefail
+                gh release upload "${{ github.event.release.tag_name }}" dmorph-src-*.tar.gz --clobber
 
     ChecksumReleaseAssets:
         needs: Build
@@ -58,46 +58,46 @@ jobs:
         outputs:
             hashBase64File: ${{ steps.hashes.outputs.handle }}
         steps:
-            - name: Harden Runner
-              uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
-              with:
-                  egress-policy: audit
+          - name: Harden Runner
+            uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
+            with:
+                egress-policy: audit
 
-            - name: Checkout
-              uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-              with:
-                  fetch-depth: 1
+          - name: Checkout
+            uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+            with:
+                fetch-depth: 1
 
-            - name: Download all release assets via GitHub CLI
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              run: |
-                  set -euo pipefail
+          - name: Download all release assets via GitHub CLI
+            env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            run: |
+                set -euo pipefail
 
-                  mkdir -p release-assets
-                  cd release-assets
-                  # gets all assets of the release
-                  gh release download "${{ github.event.release.tag_name }}" --clobber
-                  echo "Downloaded assets:"
-                  ls -lah
+                mkdir -p release-assets
+                cd release-assets
+                # gets all assets of the release
+                gh release download "${{ github.event.release.tag_name }}" --clobber
+                echo "Downloaded assets:"
+                ls -lah
 
-            - name: Generate Checksums
-              working-directory: release-assets
-              run: |
-                  set -euo pipefail
+          - name: Generate Checksums
+            working-directory: release-assets
+            run: |
+                set -euo pipefail
 
-                  # Robustly hash all regular files in this directory, then base64 and write via tee.
-                  LC_ALL=C find . -maxdepth 1 -type f -printf '%P\0' \
-                    | sort -z \
-                    | xargs -0 sha256sum -- \
-                    | base64 -w0 \
-                    > check.sha256
+                # Robustly hash all regular files in this directory, then base64 and write via tee.
+                LC_ALL=C find . -maxdepth 1 -type f -printf '%P\0' \
+                  | sort -z \
+                  | xargs -0 sha256sum -- \
+                  | base64 -w0 \
+                  > check.sha256
 
-            - name: Upload Checksums
-              id: hashes
-              uses: slsa-framework/slsa-github-generator/actions/generator/generic/create-base64-subjects-from-file@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # 2.1.0
-              with:
-                  path: release-assets/check.sha256
+          - name: Upload Checksums
+            id: hashes
+            uses: slsa-framework/slsa-github-generator/actions/generator/generic/create-base64-subjects-from-file@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # 2.1.0
+            with:
+                path: release-assets/check.sha256
 
     AssetProvenance:
         permissions:
