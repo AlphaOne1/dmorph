@@ -7,7 +7,7 @@ go 1.25
 
 require (
 	github.com/stretchr/testify v1.11.1
-	modernc.org/sqlite v1.42.2
+	modernc.org/sqlite v1.43.0
 )
 
 require (
