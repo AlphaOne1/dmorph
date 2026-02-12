@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 The Dmorph contributors.
+// SPDX-FileCopyrightText: 2026 The Dmorph contributors.
 // SPDX-License-Identifier: MPL-2.0
 
 package dmorph
