@@ -42,18 +42,21 @@ func TestDialectStatements(t *testing.T) {
 			if len(dialect.CreateTemplate) < 10 {
 				t.Errorf("create template is too short for %v", test.name)
 			}
+
 			assert.Contains(t, dialect.CreateTemplate, "%s",
 				"no table name placeholder in create template for", test.name)
 
 			if len(dialect.AppliedTemplate) < 10 {
 				t.Errorf("applied template is too short for %v", test.name)
 			}
+
 			assert.Contains(t, dialect.AppliedTemplate, "%s",
 				"no table name placeholder in applied template for", test.name)
 
 			if len(dialect.RegisterTemplate) < 10 {
 				t.Errorf("register template is too short for %v", test.name)
 			}
+
 			assert.Contains(t, dialect.RegisterTemplate, "%s",
 				"no table name placeholder in register template for", test.name)
 		})

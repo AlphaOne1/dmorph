@@ -27,28 +27,21 @@ func (b BaseDialect) EnsureMigrationTableExists(ctx context.Context, db *sql.DB,
 		return wrapIfError("could not start transaction", err)
 	}
 
-	// Safety net for unexpected panics
-	defer func() {
-		if tx != nil {
-			_ = tx.Rollback()
-		}
-	}()
+	// Safety net for unexpected panics or returns. We can always call Rollback,
+	// as it does semantically nothing in case of a previous successful commit
+	defer func() { _ = tx.Rollback() }()
 
 	if _, execErr := tx.ExecContext(ctx, fmt.Sprintf(b.CreateTemplate, tableName)); execErr != nil {
 		rollbackErr := tx.Rollback()
-		tx = nil
 
 		return errors.Join(execErr, rollbackErr)
 	}
 
 	if err := tx.Commit(); err != nil {
 		rollbackErr := tx.Rollback()
-		tx = nil
 
 		return errors.Join(err, rollbackErr)
 	}
-
-	tx = nil
 
 	return nil
 }

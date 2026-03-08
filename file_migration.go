@@ -119,7 +119,9 @@ func applyStepsStream(ctx context.Context, tx *sql.Tx, r io.Reader, migrationID 
 
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, InitialScannerBufSize), MaxScannerBufSize)
+
 	newStep := true
+
 	var step int
 
 	for step = 0; scanner.Scan(); {
@@ -139,7 +141,9 @@ func applyStepsStream(ctx context.Context, tx *sql.Tx, r io.Reader, migrationID 
 			}
 
 			buf.Reset()
+
 			newStep = true
+
 			step++
 
 			continue
@@ -151,6 +155,7 @@ func applyStepsStream(ctx context.Context, tx *sql.Tx, r io.Reader, migrationID 
 		}
 
 		buf.Write(scanner.Bytes())
+
 		newStep = false
 	}
 
