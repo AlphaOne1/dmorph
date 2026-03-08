@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -115,6 +116,8 @@ func applyStepsStream(ctx context.Context, tx *sql.Tx, r io.Reader, migrationID 
 	const InitialScannerBufSize = 64 * 1024
 	const MaxScannerBufSize = 1024 * 1024
 
+	initialEmptyRegex := regexp.MustCompile(`^\s*(?:--.*)?$`)
+
 	buf := bytes.Buffer{}
 
 	scanner := bufio.NewScanner(r)
@@ -125,7 +128,7 @@ func applyStepsStream(ctx context.Context, tx *sql.Tx, r io.Reader, migrationID 
 	var step int
 
 	for step = 0; scanner.Scan(); {
-		if newStep && strings.HasPrefix(scanner.Text(), "--") {
+		if newStep && initialEmptyRegex.MatchString(scanner.Text()) {
 			// skip leading comments
 			continue
 		}
