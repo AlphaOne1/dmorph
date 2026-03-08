@@ -116,6 +116,8 @@ func applyStepsStream(ctx context.Context, tx *sql.Tx, r io.Reader, migrationID 
 	const InitialScannerBufSize = 64 * 1024
 	const MaxScannerBufSize = 1024 * 1024
 
+	// The regex is here, as we do not expect to have overwhelming lots of calls even during larger migrations.
+	// No need to pollute the global namespace.
 	initialEmptyRegex := regexp.MustCompile(`^\s*(?:--.*)?$`)
 
 	buf := bytes.Buffer{}

@@ -566,14 +566,13 @@ func (m oneMigration) Migrate(_ /* ctx */ context.Context, _ /* tx */ *sql.Tx) e
 func TestRunOneMigrationFailsOnClosedDB(t *testing.T) {
 	t.Parallel()
 
-	db, err := sql.Open("sqlite", ":memory:")
+	db := openTempSQLite(t)
 
-	require.NoError(t, err)
 	require.NoError(t, db.Close())
 
 	logger := slog.New(slog.DiscardHandler)
 
-	err = dmorph.Run(
+	err := dmorph.Run(
 		context.Background(),
 		db,
 		dmorph.WithDialect(okDialect{}),
@@ -588,15 +587,13 @@ func TestRunOneMigrationFailsOnClosedDB(t *testing.T) {
 func TestApplyFailsOnCanceledContext(t *testing.T) {
 	t.Parallel()
 
-	db, err := sql.Open("sqlite", ":memory:")
-
-	require.NoError(t, err)
+	db := openTempSQLite(t)
 
 	logger := slog.New(slog.DiscardHandler)
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	ctxCancel()
 
-	err = dmorph.Run(
+	err := dmorph.Run(
 		ctx,
 		db,
 		dmorph.WithDialect(okDialect{}),
