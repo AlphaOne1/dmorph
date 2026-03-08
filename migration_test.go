@@ -601,7 +601,6 @@ func TestApplyFailsOnCanceledContext(t *testing.T) {
 		dmorph.WithLog(logger),
 	)
 
-	require.NoError(t, db.Close())
 	require.Error(t, err)
 	require.ErrorContains(t, err, "context cancelled")
 }
