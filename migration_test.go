@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"io"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -539,4 +540,76 @@ func TestMigrationApplyUnableCommit(t *testing.T) {
 	assert.Error(t,
 		morpher.TapplyMigrations(t.Context(), db, ""),
 		"morpher should fail to register")
+}
+
+type okDialect struct{}
+
+func (okDialect) EnsureMigrationTableExists(ctx context.Context, db *sql.DB, tableName string) error {
+	return nil
+}
+
+func (okDialect) AppliedMigrations(ctx context.Context, db *sql.DB, tableName string) ([]string, error) {
+	return nil, nil
+}
+
+func (okDialect) RegisterMigration(ctx context.Context, tx *sql.Tx, id string, tableName string) error {
+	return nil
+}
+
+type oneMigration struct {
+	key string
+}
+
+func (m oneMigration) Key() string {
+	return m.key
+}
+
+func (m oneMigration) Migrate(ctx context.Context, tx *sql.Tx) error {
+	return nil
+}
+
+func TestRun_BeginTxFailsOnClosedDB(t *testing.T) {
+	t.Parallel()
+
+	db, err := sql.Open("sqlite", ":memory:")
+
+	require.NoError(t, err)
+	require.NoError(t, db.Close())
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	err = dmorph.Run(
+		context.Background(),
+		db,
+		dmorph.WithDialect(okDialect{}),
+		dmorph.WithMigrations(oneMigration{key: "001_test"}),
+		dmorph.WithLog(logger),
+	)
+
+	require.Error(t, err)
+	require.ErrorContains(t, err, "begin tx")
+}
+
+func TestRun_ApplyFailsOnCanceledContext(t *testing.T) {
+	t.Parallel()
+
+	db, err := sql.Open("sqlite", ":memory:")
+
+	require.NoError(t, err)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	ctx, ctxCancel := context.WithCancel(context.Background())
+	ctxCancel()
+
+	err = dmorph.Run(
+		ctx,
+		db,
+		dmorph.WithDialect(okDialect{}),
+		dmorph.WithMigrations(oneMigration{key: "001_test"}),
+		dmorph.WithLog(logger),
+	)
+
+	require.NoError(t, db.Close())
+	require.Error(t, err)
+	require.ErrorContains(t, err, "context cancelled")
 }

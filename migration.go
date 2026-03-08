@@ -192,6 +192,7 @@ func (m *Morpher) Run(ctx context.Context, db *sql.DB) error {
 	}
 
 	slices.SortFunc(m.Migrations, migrationOrder)
+
 	lastMigration := ""
 
 	if len(appliedMigrations) == 0 {
@@ -224,6 +225,7 @@ func (m *Morpher) applyMigrations(ctx context.Context, db *sql.DB, lastMigration
 		}
 
 		m.Log.Info("applying migration", slog.String("file", migration.Key()))
+
 		startMigration = time.Now()
 
 		// Check context before starting a transaction
@@ -257,13 +259,13 @@ func (m *Morpher) runOneMigration(ctx context.Context, db *sql.DB, mig Migration
 	// allocated resources of the transaction.
 	defer func() { _ = tx.Rollback() }()
 
-	if err := mig.Migrate(ctx, tx); err != nil {
+	if err = mig.Migrate(ctx, tx); err != nil {
 		rollbackErr := tx.Rollback()
 
 		return errors.Join(err, rollbackErr)
 	}
 
-	if err := m.Dialect.RegisterMigration(ctx, tx, mig.Key(), m.TableName); err != nil {
+	if err = m.Dialect.RegisterMigration(ctx, tx, mig.Key(), m.TableName); err != nil {
 		rollbackErr := tx.Rollback()
 
 		return errors.Join(err, rollbackErr)
