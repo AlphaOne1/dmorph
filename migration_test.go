@@ -31,6 +31,9 @@ func openTempSQLite(t *testing.T) *sql.DB {
 	require.NoError(t, err, "DB could not be opened")
 	t.Cleanup(func() { _ = db.Close() })
 
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+
 	return db
 }
 
