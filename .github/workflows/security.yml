@@ -15,36 +15,10 @@ on:
 permissions: read-all
 
 jobs:
-    TrivyCode:
+    GolangCI:
         runs-on: ubuntu-latest
         permissions:
-            security-events: write
-        steps:
-          - name: Harden Runner
-            uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
-            with:
-                egress-policy: audit
-
-          - name: Checkout code
-            uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-          - name: Run Trivy vulnerability scanner in repo mode
-            uses: aquasecurity/trivy-action@97e0b3872f55f89b95b2f65b3dbab56962816478 # 0.34.2
-            with:
-                scan-type: 'fs'
-                ignore-unfixed: true
-                format: 'sarif'
-                output: 'trivy-results.sarif'
-                severity: 'CRITICAL'
-
-          - name: Upload Trivy scan results to GitHub Security tab
-            uses: github/codeql-action/upload-sarif@c793b717bc78562f491db7b0e93a3a178b099162 # v4.32.5
-            with:
-                sarif_file: 'trivy-results.sarif'
-
-    GolangciLint:
-        runs-on: ubuntu-latest
-        permissions:
+            contents: read
             security-events: write
         steps:
           - name: Harden Runner
@@ -61,12 +35,40 @@ jobs:
             uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
             with:
                 version: latest
-                args: --output.sarif.path=golangci-lint-results.sarif
+                args: --timeout=5m --output.sarif.path=golangci-lint-results.sarif --output.text.path=stdout
 
           - name: Upload golangci-lint results to GitHub Security tab
             uses: github/codeql-action/upload-sarif@c793b717bc78562f491db7b0e93a3a178b099162 # v4.32.5
             with:
                 sarif_file: golangci-lint-results.sarif
+
+    TrivyCode:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            security-events: write
+        steps:
+          - name: Harden Runner
+            uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+            with:
+                egress-policy: audit
+
+          - name: Checkout code
+            uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+          - name: Run Trivy vulnerability scanner in fs mode
+            uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518 # 0.34.1
+            with:
+                scan-type: 'fs'
+                ignore-unfixed: true
+                format: 'sarif'
+                output: 'trivy-results.sarif'
+                severity: 'CRITICAL,HIGH'
+
+          - name: Upload Trivy scan results to GitHub Security tab
+            uses: github/codeql-action/upload-sarif@c793b717bc78562f491db7b0e93a3a178b099162 # v4.32.5
+            with:
+                sarif_file: 'trivy-results.sarif'
 
     VulnerabilityCheck:
         strategy:
@@ -75,6 +77,7 @@ jobs:
                   - "stable"
         runs-on: ubuntu-latest
         permissions:
+            contents: read
             security-events: write
         steps:
           - name: Harden Runner
@@ -82,24 +85,17 @@ jobs:
             with:
                 egress-policy: audit
 
-          - name: Checkout
-            uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-            with:
-                fetch-depth: 1
-
-          - name: VulnerabilityCheck
+          - name: Vulnerability Check
             uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
             with:
-                repo-checkout: false
                 go-version-input: ${{matrix.go-version}}
                 output-format: sarif
                 output-file: govulncheck-results.sarif
 
-          - name: PrintSarif
-            id: PrintSarif
+          - name: Print Sarif
+            id: printSarif
             run:  |
                 cat govulncheck-results.sarif
-
                 if grep results govulncheck-results.sarif
                 then
                     echo "hasResults=true" >> $GITHUB_OUTPUT
@@ -107,8 +103,8 @@ jobs:
                     echo "hasResults=false" >> $GITHUB_OUTPUT
                 fi
 
-          - name: Upload govulncheck results to GitHub Security tab
-            if: ${{ steps.PrintSarif.outputs.hasResults == 'true' }}
+          - name: Upload govulncheck results to Security tab
+            if: ${{ steps.printSarif.outputs.hasResults == 'true' }}
             uses: github/codeql-action/upload-sarif@c793b717bc78562f491db7b0e93a3a178b099162 # v4.32.5
             with:
                 sarif_file: govulncheck-results.sarif
