@@ -91,6 +91,7 @@ linters:
             disable:
                 - decl
                 - err
+                - leading-whitespace
 
 issues:
     max-issues-per-linter: 0

@@ -8,7 +8,6 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
-	"io"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -24,32 +23,12 @@ import (
 //go:embed testData
 var testMigrationsDir embed.FS
 
-// prepareDB creates a temporary SQLite database file and returns its file path.
-func prepareDB() (string, error) {
-	var result string
-
-	dbFile, dbFileErr := os.CreateTemp("", "")
-
-	if dbFileErr != nil {
-		return "", dmorph.TwrapIfError("could not create temporary db file", dbFileErr) //nolint:wrapcheck
-	}
-
-	result = dbFile.Name()
-
-	_ = dbFile.Close()
-
-	return result, nil
-}
-
+// openTempSQLite opens a temporary in-memory SQLite database for testing and ensures it is closed after the test ends.
 func openTempSQLite(t *testing.T) *sql.DB {
 	t.Helper()
 
-	dbFile, err := prepareDB()
-	require.NoError(t, err, "DB file could not be created")
-	t.Cleanup(func() { _ = os.Remove(dbFile) })
-
-	db, dbErr := sql.Open("sqlite", dbFile)
-	require.NoError(t, dbErr, "DB could not be opened")
+	db, err := sql.Open("sqlite", ":memory:")
+	require.NoError(t, err, "DB could not be opened")
 	t.Cleanup(func() { _ = db.Close() })
 
 	return db
@@ -544,15 +523,28 @@ func TestMigrationApplyUnableCommit(t *testing.T) {
 
 type okDialect struct{}
 
-func (okDialect) EnsureMigrationTableExists(ctx context.Context, db *sql.DB, tableName string) error {
+func (okDialect) EnsureMigrationTableExists(
+	_ /* ctx */ context.Context,
+	_ /* db */ *sql.DB,
+	_ /* tableName */ string) error {
+
 	return nil
 }
 
-func (okDialect) AppliedMigrations(ctx context.Context, db *sql.DB, tableName string) ([]string, error) {
+func (okDialect) AppliedMigrations(
+	_ /* ctx */ context.Context,
+	_ /* db */ *sql.DB,
+	_ /* tableName */ string) ([]string, error) {
+
 	return nil, nil
 }
 
-func (okDialect) RegisterMigration(ctx context.Context, tx *sql.Tx, id string, tableName string) error {
+func (okDialect) RegisterMigration(
+	_ /* ctx */ context.Context,
+	_ /* tx */ *sql.Tx,
+	_ /* id */ string,
+	_ /* tableName */ string) error {
+
 	return nil
 }
 
@@ -564,11 +556,11 @@ func (m oneMigration) Key() string {
 	return m.key
 }
 
-func (m oneMigration) Migrate(ctx context.Context, tx *sql.Tx) error {
+func (m oneMigration) Migrate(_ /* ctx */ context.Context, _ /* tx */ *sql.Tx) error {
 	return nil
 }
 
-func TestRun_BeginTxFailsOnClosedDB(t *testing.T) {
+func TestRunOneMigrationFailsOnClosedDB(t *testing.T) {
 	t.Parallel()
 
 	db, err := sql.Open("sqlite", ":memory:")
@@ -576,7 +568,7 @@ func TestRun_BeginTxFailsOnClosedDB(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, db.Close())
 
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := slog.New(slog.DiscardHandler)
 
 	err = dmorph.Run(
 		context.Background(),
@@ -590,14 +582,14 @@ func TestRun_BeginTxFailsOnClosedDB(t *testing.T) {
 	require.ErrorContains(t, err, "begin tx")
 }
 
-func TestRun_ApplyFailsOnCanceledContext(t *testing.T) {
+func TestApplyFailsOnCanceledContext(t *testing.T) {
 	t.Parallel()
 
 	db, err := sql.Open("sqlite", ":memory:")
 
 	require.NoError(t, err)
 
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := slog.New(slog.DiscardHandler)
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	ctxCancel()
 
