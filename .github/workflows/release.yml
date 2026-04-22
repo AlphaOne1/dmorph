@@ -33,23 +33,29 @@ jobs:
 
           - name: Generate source archive
             shell: bash
+            env:
+                TAG_NAME: ${{ github.event.release.tag_name }}
             run: |
                 set -euo pipefail
 
-                TAG=`echo "${{ github.event.release.tag_name }}" | sed 's/\//-/g'`
+                PROJECT_NAME=`go list -m | sed -r 's/(.*\/)*(.+)/\2/'`
+                TAG=`echo "$TAG_NAME" | sed 's/\//-/g'`
                 git archive \
-                  --format=tar.gz \
-                  --prefix="dmorph-src-${TAG}/" \
-                  --output="dmorph-src-${TAG}.tar.gz" \
-                  "${{ github.event.release.tag_name }}"
+                    --format=tar.gz \
+                    --prefix="${PROJECT_NAME}-src-${TAG}/" \
+                    --output="${PROJECT_NAME}-src-${TAG}.tar.gz" \
+                    "$TAG_NAME"
 
           - name: Upload Release (via GitHub CLI)
             env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                TAG_NAME: ${{ github.event.release.tag_name }}
             shell: bash
             run: |
                 set -euo pipefail
-                gh release upload "${{ github.event.release.tag_name }}" dmorph-src-*.tar.gz --clobber
+                
+                PROJECT_NAME=`go list -m | sed -r 's/(.*\/)*(.+)/\2/'`
+                gh release upload "$TAG_NAME" ${PROJECT_NAME}-src-*.tar.gz --clobber
 
     ChecksumReleaseAssets:
         needs: Build
@@ -71,13 +77,14 @@ jobs:
           - name: Download all release assets via GitHub CLI
             env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                TAG_NAME: ${{ github.event.release.tag_name }}
             run: |
                 set -euo pipefail
 
                 mkdir -p release-assets
                 cd release-assets
                 # gets all assets of the release
-                gh release download "${{ github.event.release.tag_name }}" --clobber
+                gh release download "$TAG_NAME" --clobber
                 echo "Downloaded assets:"
                 ls -lah
 

@@ -5,6 +5,18 @@
 <!-- markdownlint-disable MD013 MD033 MD041 -->
 <p align="center">
     <img src="dmorph_logo.svg" width="40%" alt="Logo"><br>
+    <a href="https://github.com/AlphaOne1/dmorph/blob/HEAD/go.mod"
+       rel="external noopener noreferrer"
+       target="_blank">
+        <img src="https://img.shields.io/github/go-mod/go-version/AlphaOne1/dmorph"
+             alt="Go Version">
+    </a>
+    <a href="https://github.com/AlphaOne1/dmorph/releases"
+       rel="external noopener noreferrer"
+       target="_blank">
+        <img src="https://img.shields.io/github/v/release/AlphaOne1/dmorph"
+             alt="Latest Release">
+    </a>
     <a href="https://github.com/AlphaOne1/dmorph/actions/workflows/test.yml"
        rel="external noopener noreferrer"
        target="_blank">
@@ -59,6 +71,12 @@
         <img src="https://api.reuse.software/badge/github.com/AlphaOne1/dmorph"
             alt="REUSE compliance">
     </a>
+    <!-- <a href="https://slsa.dev"
+       rel="external noopener noreferrer"
+       target="_blank">
+        <img src="https://slsa.dev/images/gh-badge-level3.svg"
+             alt="SLSA Level 3">
+    </a> -->
     <a href="https://app.fossa.com/projects/git%2Bgithub.com%2FAlphaOne1%2Fdmorph?ref=badge_shield&issueType=license"
        rel="external noopener noreferrer"
        target="_blank">
@@ -113,6 +131,17 @@ To install *DMorph*, you can use the following command:
 $ go get github.com/AlphaOne1/dmorph
 ```
 
+<!--Builds are secured with SLSA Level 3 provenance via slsa-framework/slsa-github-generator.
+The downloaded source archive together with the provenance file `multiple.intoto.jsonl`
+can be verified using the [slsa-verifier](https://github.com/slsa-framework/slsa-verifier/)
+(replace the `<VERSION>` with the one you actually downloaded):
+
+```bash
+$ slsa-verifier verify-artifact dmorph-src-v<VERSION>.tar.gz \
+    --provenance-path multiple.intoto.jsonl                  \
+    --source-uri github.com/AlphaOne1/dmorph                 \
+    --source-tag v<VERSION>
+```-->
 
 Getting Started
 ---------------
