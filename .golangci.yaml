@@ -15,6 +15,7 @@ linters:
 
     disable:
         - exhaustruct
+        - gomodguard
         - noinlineerr
         - nonamedreturns
         - wsl

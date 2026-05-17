@@ -268,7 +268,7 @@ func TestMigrationIsValid(t *testing.T) {
 			m: dmorph.Morpher{
 				Dialect:    dmorph.DialectSQLite(),
 				Migrations: []dmorph.Migration{dmorph.FileMigration{Name: "01"}},
-				TableName:  "migrations",
+				TableName:  dmorph.MigrationTableName,
 			},
 			err: nil,
 		},
@@ -276,7 +276,7 @@ func TestMigrationIsValid(t *testing.T) {
 			m: dmorph.Morpher{
 				Dialect:    nil,
 				Migrations: []dmorph.Migration{dmorph.FileMigration{Name: "01"}},
-				TableName:  "migrations",
+				TableName:  dmorph.MigrationTableName,
 			},
 			err: dmorph.ErrNoDialect,
 		},
@@ -284,7 +284,7 @@ func TestMigrationIsValid(t *testing.T) {
 			m: dmorph.Morpher{
 				Dialect:    dmorph.DialectSQLite(),
 				Migrations: nil,
-				TableName:  "migrations",
+				TableName:  dmorph.MigrationTableName,
 			},
 			err: dmorph.ErrNoMigrations,
 		},
