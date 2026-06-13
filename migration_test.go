@@ -13,9 +13,9 @@ import (
 	"os"
 	"testing"
 
+	_ "github.com/ncruces/go-sqlite3/driver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	_ "modernc.org/sqlite"
 
 	"github.com/AlphaOne1/dmorph"
 )
@@ -27,7 +27,7 @@ var testMigrationsDir embed.FS
 func openTempSQLite(t *testing.T) *sql.DB {
 	t.Helper()
 
-	db, err := sql.Open("sqlite", ":memory:")
+	db, err := sql.Open("sqlite3", ":memory:")
 	require.NoError(t, err, "DB could not be opened")
 	t.Cleanup(func() { _ = db.Close() })
 

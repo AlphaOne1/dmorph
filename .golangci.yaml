@@ -61,7 +61,7 @@ linters:
                         - github.com/stretchr/testify/assert
                         - github.com/stretchr/testify/require
                         - github.com/AlphaOne1/dmorph
-                        - modernc.org/sqlite
+                        - github.com/ncruces/go-sqlite3/driver
 
         exhaustive:
             default-signifies-exhaustive: true
