@@ -95,37 +95,27 @@ type MigrationKeyProperties struct {
 	MigrationKeyValid func(m string) bool
 }
 
-var (
-
-	// migrationKeyAlphabetical provides properties for alphabetical sorting and validation of migration keys.
-	migrationKeyAlphabetical = MigrationKeyProperties{
+// MigrationKeyAlphabetical returns MigrationKeyProperties configured for alphabetical sorting of migration keys.
+func MigrationKeyAlphabetical() MigrationKeyProperties {
+	return MigrationKeyProperties{
 		MigrationOrder:    migrationOrderAlphabetical,
 		MigrationKeyOrder: alphabeticalSortPredicate,
 		MigrationKeyValid: func(m string) bool {
 			return m != ""
 		},
 	}
+}
 
-	// migrationKeySemVerPrefix provides properties for semantic version prefix-based migration key sorting
-	// and validation.
-	migrationKeySemVerPrefix = MigrationKeyProperties{
+// MigrationKeySemVerPrefix returns a MigrationKeyProperties object configured for semantic version prefix-based
+// operations.
+func MigrationKeySemVerPrefix() MigrationKeyProperties {
+	return MigrationKeyProperties{
 		MigrationOrder:    migrationOrderSemVerPrefix,
 		MigrationKeyOrder: semVerPrefixSortPredicate,
 		MigrationKeyValid: func(m string) bool {
 			return semVerPrefixRex.MatchString(m)
 		},
 	}
-)
-
-// MigrationKeyAlphabetical returns MigrationKeyProperties configured for alphabetical sorting of migration keys.
-func MigrationKeyAlphabetical() MigrationKeyProperties {
-	return migrationKeyAlphabetical
-}
-
-// MigrationKeySemVerPrefix returns a MigrationKeyProperties object configured for semantic version prefix-based
-// operations.
-func MigrationKeySemVerPrefix() MigrationKeyProperties {
-	return migrationKeySemVerPrefix
 }
 
 // Morpher contains all the required information to run a given set of database migrations on a database.
@@ -392,6 +382,7 @@ func (m *Morpher) checkAppliedMigrations(appliedMigrations []string) error {
 	if m.KeyProp.MigrationKeyOrder(
 		m.Migrations[len(m.Migrations)-1].Key(),
 		appliedMigrations[len(appliedMigrations)-1]) < 0 {
+
 		return ErrMigrationsTooOld
 	}
 
