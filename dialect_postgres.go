@@ -4,6 +4,8 @@
 package dmorph
 
 // DialectPostgres returns a Dialect configured for Postgres databases.
+//
+//nolint:goconst
 func DialectPostgres() NamedParamsDialect {
 	return NamedParamsDialect{
 		CreateTemplate: `

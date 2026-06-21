@@ -4,6 +4,8 @@
 package dmorph
 
 // DialectSQLite returns a Dialect configured for SQLite databases.
+//
+//nolint:goconst
 func DialectSQLite() NamedParamsDialect {
 	return NamedParamsDialect{
 		CreateTemplate: `

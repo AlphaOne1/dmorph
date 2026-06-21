@@ -5,6 +5,8 @@ package dmorph
 
 // DialectSQLiteNumbered returns a Dialect configured for SQLite databases with numbered parameters.
 // This is mainly used for tests, but nothing speaks against it being used otherwise.
+//
+//nolint:goconst
 func DialectSQLiteNumbered() NumberedParamsDialect {
 	return NumberedParamsDialect{
 		NamedParamsDialect: NamedParamsDialect{
