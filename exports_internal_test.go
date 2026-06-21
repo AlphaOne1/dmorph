@@ -12,10 +12,11 @@ import (
 
 //nolint:gochecknoglobals // these are used for testing and not visible or used otherwise
 var (
-	TapplyStepsStream    = applyStepsStream
-	TmigrationFromFileFS = migrationFromFileFS
-	TmigrationOrder      = migrationOrder
-	TwrapIfError         = wrapIfError
+	TapplyStepsStream          = applyStepsStream
+	TmigrationFromFileFS       = migrationFromFileFS
+	TmigrationOrder            = migrationOrderAlphabetical
+	TwrapIfError               = wrapIfError
+	TsemVerPrefixSortPredicate = semVerPrefixSortPredicate
 )
 
 func (m *Morpher) TapplyMigrations(ctx context.Context, db *sql.DB, lastMigration string) error {

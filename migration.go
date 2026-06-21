@@ -27,6 +27,9 @@ var (
 	// ValidTableNameRex is the regular expression used to check if a given migration table name is valid.
 	ValidTableNameRex = regexp.MustCompile("^[a-zA-Z0-9_]+$")
 
+	// ErrMigrationKeyFormat is returned when a migration key does not match the expected format.
+	ErrMigrationKeyFormat = errors.New("migration key format invalid")
+
 	// ErrMigrationsUnrelated signals that the set of migrations to apply and the already applied set do not have the
 	// same (order of) applied migrations. Applying unrelated migrations could severely harm the database.
 	ErrMigrationsUnrelated = errors.New("migrations unrelated")
@@ -75,25 +78,64 @@ type Migration interface {
 	Migrate(ctx context.Context, tx *sql.Tx) error // migration functionality
 }
 
-// migrationOrder is used to order Migration instances.
-func migrationOrder(m, n Migration) int {
-	switch {
-	case m.Key() < n.Key():
-		return -1
-	case m.Key() > n.Key():
-		return 1
-	default:
-		return 0
+// migrationOrderAlphabetical is used to order Migration instances.
+func migrationOrderAlphabetical(m, n Migration) int {
+	return alphabeticalSortPredicate(m.Key(), n.Key())
+}
+
+// migrationOrderSemVerPrefix compares two Migration objects based on semantic version prefixes in their keys.
+func migrationOrderSemVerPrefix(m, n Migration) int {
+	return semVerPrefixSortPredicate(m.Key(), n.Key())
+}
+
+// MigrationKeyProperties defines the properties and functions for managing migration key behaviors.
+type MigrationKeyProperties struct {
+	MigrationOrder    func(m, n Migration) int
+	MigrationKeyOrder func(m, n string) int
+	MigrationKeyValid func(m string) bool
+}
+
+var (
+
+	// migrationKeyAlphabetical provides properties for alphabetical sorting and validation of migration keys.
+	migrationKeyAlphabetical = MigrationKeyProperties{
+		MigrationOrder:    migrationOrderAlphabetical,
+		MigrationKeyOrder: alphabeticalSortPredicate,
+		MigrationKeyValid: func(m string) bool {
+			return m != ""
+		},
 	}
+
+	// migrationKeySemVerPrefix provides properties for semantic version prefix-based migration key sorting
+	// and validation.
+	migrationKeySemVerPrefix = MigrationKeyProperties{
+		MigrationOrder:    migrationOrderSemVerPrefix,
+		MigrationKeyOrder: semVerPrefixSortPredicate,
+		MigrationKeyValid: func(m string) bool {
+			return semVerPrefixRex.MatchString(m)
+		},
+	}
+)
+
+// MigrationKeyAlphabetical returns MigrationKeyProperties configured for alphabetical sorting of migration keys.
+func MigrationKeyAlphabetical() MigrationKeyProperties {
+	return migrationKeyAlphabetical
+}
+
+// MigrationKeySemVerPrefix returns a MigrationKeyProperties object configured for semantic version prefix-based
+// operations.
+func MigrationKeySemVerPrefix() MigrationKeyProperties {
+	return migrationKeySemVerPrefix
 }
 
 // Morpher contains all the required information to run a given set of database migrations on a database.
 type Morpher struct {
-	Dialect    Dialect      // database vendor specific dialect
-	Migrations []Migration  // migrations to be applied
-	TableName  string       // table name for migration management
-	GroupName  string       // name of the migration group
-	Log        *slog.Logger // logger to be used
+	Dialect    Dialect                // database vendor specific dialect
+	Migrations []Migration            // migrations to be applied
+	TableName  string                 // table name for migration management
+	GroupName  string                 // name of the migration group
+	KeyProp    MigrationKeyProperties // migration comparison mode
+	Log        *slog.Logger           // logger to be used
 }
 
 // MorphOption is the type used for functional options.
@@ -159,6 +201,15 @@ func WithGroupName(groupName string) func(*Morpher) error {
 	}
 }
 
+// WithMigrationKeyProperties sets the migration key comparison properties for a Morpher instance.
+func WithMigrationKeyProperties(keyProp MigrationKeyProperties) func(*Morpher) error {
+	return func(m *Morpher) error {
+		m.KeyProp = keyProp
+
+		return nil
+	}
+}
+
 // NewMorpher creates a new Morpher configuring it with the given options.
 // It ensures that the newly created Morpher has migrations and a database dialect configured.
 // If no migration table name is given, the default MigrationTableName is used instead.
@@ -166,6 +217,7 @@ func NewMorpher(options ...MorphOption) (*Morpher, error) {
 	morpher := &Morpher{
 		TableName: MigrationTableName,
 		GroupName: MigrationGroupName,
+		KeyProp:   MigrationKeyAlphabetical(),
 		Log:       slog.Default(),
 	}
 
@@ -204,6 +256,12 @@ func (m *Morpher) IsValid() error {
 		return ErrMigrationTableNameInvalid
 	}
 
+	for _, mi := range m.Migrations {
+		if !m.KeyProp.MigrationKeyValid(mi.Key()) {
+			return ErrMigrationKeyFormat
+		}
+	}
+
 	return nil
 }
 
@@ -227,7 +285,7 @@ func (m *Morpher) Run(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("could not get applied migrations: %w", appliedMigrationsErr)
 	}
 
-	slices.SortFunc(m.Migrations, migrationOrder)
+	slices.SortFunc(m.Migrations, m.KeyProp.MigrationOrder)
 
 	lastMigration := ""
 
@@ -254,7 +312,7 @@ func (m *Morpher) applyMigrations(ctx context.Context, db *sql.DB, lastMigration
 	var startMigration time.Time
 
 	for _, migration := range m.Migrations {
-		if lastMigration >= migration.Key() {
+		if lastMigration != "" && m.KeyProp.MigrationKeyOrder(lastMigration, migration.Key()) >= 0 {
 			m.Log.Info("migration already applied", slog.String("file", migration.Key()))
 
 			continue
@@ -319,13 +377,21 @@ func (m *Morpher) runOneMigration(ctx context.Context, db *sql.DB, mig Migration
 // checkAppliedMigrations checks if the already applied migrations in the database are consistent.
 // This means inherently in them and also regarding the migrations that are to be applied.
 func (m *Morpher) checkAppliedMigrations(appliedMigrations []string) error {
-	if !slices.IsSorted(appliedMigrations) {
+	for _, mi := range appliedMigrations {
+		if !m.KeyProp.MigrationKeyValid(mi) {
+			return ErrMigrationKeyFormat
+		}
+	}
+
+	if !slices.IsSortedFunc(appliedMigrations, m.KeyProp.MigrationKeyOrder) {
 		m.Log.Error("migrations not applied in order")
 
 		return ErrMigrationsUnsorted
 	}
 
-	if m.Migrations[len(m.Migrations)-1].Key() < appliedMigrations[len(appliedMigrations)-1] {
+	if m.KeyProp.MigrationKeyOrder(
+		m.Migrations[len(m.Migrations)-1].Key(),
+		appliedMigrations[len(appliedMigrations)-1]) < 0 {
 		return ErrMigrationsTooOld
 	}
 
