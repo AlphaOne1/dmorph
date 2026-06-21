@@ -92,6 +92,14 @@ func TestSemVerSortPredicate(t *testing.T) {
 			in:   []string{"v1.1.1", "v1.1.0"},
 			want: []string{"v1.1.0", "v1.1.1"},
 		},
+		{
+			in:   []string{"v1.1.0", "v1.1.0"},
+			want: []string{"v1.1.0", "v1.1.0"},
+		},
+		{
+			in:   []string{"v1.1.0", "nosemver"},
+			want: []string{"v1.1.0", "nosemver"},
+		},
 	}
 
 	for testIndex, test := range tests {

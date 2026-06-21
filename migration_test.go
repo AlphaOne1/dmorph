@@ -38,7 +38,7 @@ func openTempSQLite(t *testing.T) *sql.DB {
 }
 
 // TestMigration tests the happy flow.
-func TestMigration(t *testing.T) {
+func TestMigrationNamedParams(t *testing.T) {
 	t.Parallel()
 
 	db := openTempSQLite(t)
@@ -50,6 +50,26 @@ func TestMigration(t *testing.T) {
 	runErr := dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
+		dmorph.WithGroupName(dmorph.MigrationGroupName),
+		dmorph.WithMigrationKeyProperties(dmorph.MigrationKeyAlphabetical()),
+		dmorph.WithMigrationsFromFS(migrationsDir))
+
+	assert.NoError(t, runErr, "migrations could not be run")
+}
+
+// TestMigration tests the happy flow.
+func TestMigrationNumberedParams(t *testing.T) {
+	t.Parallel()
+
+	db := openTempSQLite(t)
+
+	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
+
+	require.NoError(t, migrationsDirErr, "migrations directory could not be opened")
+
+	runErr := dmorph.Run(t.Context(),
+		db,
+		dmorph.WithDialect(dmorph.DialectSQLiteNumbered()),
 		dmorph.WithGroupName(dmorph.MigrationGroupName),
 		dmorph.WithMigrationKeyProperties(dmorph.MigrationKeyAlphabetical()),
 		dmorph.WithMigrationsFromFS(migrationsDir))
@@ -544,6 +564,54 @@ func TestMigrationApplyUnableCommit(t *testing.T) {
 	assert.Error(t,
 		morpher.TapplyMigrations(t.Context(), db, ""),
 		"morpher should fail to register")
+}
+
+// TestMigrationNumberedParamsApplyInvalidParamName verifies that applying migrations with an invalid parameter name
+// fails. It uses a custom SQLite dialect with numbered parameters and expects an ErrParamNameInvalid error.
+func TestMigrationNumberedParamsApplyInvalidParamName(t *testing.T) {
+	t.Parallel()
+
+	db := openTempSQLite(t)
+
+	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
+
+	require.NoError(t, migrationsDirErr, "migrations directory could not be opened")
+
+	dialect := dmorph.DialectSQLiteNumbered()
+	dialect.AppliedMigrationsParamsOrder = []dmorph.ParamName{"no"}
+
+	runErr := dmorph.Run(t.Context(),
+		db,
+		dmorph.WithDialect(dialect),
+		dmorph.WithGroupName(dmorph.MigrationGroupName),
+		dmorph.WithMigrationKeyProperties(dmorph.MigrationKeyAlphabetical()),
+		dmorph.WithMigrationsFromFS(migrationsDir))
+
+	assert.ErrorIs(t, runErr, dmorph.ErrParamNameInvalid, "error expected")
+}
+
+// TestMigrationNumberedParamsRegisterInvalidParamName verifies that registering migrations with an invalid parameter
+// name fails. It uses a custom SQLite dialect with numbered parameters and expects an ErrParamNameInvalid error.
+func TestMigrationNumberedParamsRegisterInvalidParamName(t *testing.T) {
+	t.Parallel()
+
+	db := openTempSQLite(t)
+
+	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsDir, "testData")
+
+	require.NoError(t, migrationsDirErr, "migrations directory could not be opened")
+
+	dialect := dmorph.DialectSQLiteNumbered()
+	dialect.RegisterMigrationParamsOrder = []dmorph.ParamName{"no"}
+
+	runErr := dmorph.Run(t.Context(),
+		db,
+		dmorph.WithDialect(dialect),
+		dmorph.WithGroupName(dmorph.MigrationGroupName),
+		dmorph.WithMigrationKeyProperties(dmorph.MigrationKeyAlphabetical()),
+		dmorph.WithMigrationsFromFS(migrationsDir))
+
+	assert.ErrorIs(t, runErr, dmorph.ErrParamNameInvalid, "error expected")
 }
 
 type okDialect struct{}

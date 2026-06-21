@@ -25,6 +25,7 @@ func TestNumberedParamsDialectStatements(t *testing.T) {
 		caller func() dmorph.NumberedParamsDialect
 	}{
 		{name: "MySQL", caller: dmorph.DialectMySQL},
+		{name: "SQLiteNumbered", caller: dmorph.DialectSQLiteNumbered},
 	}
 
 	for k, test := range tests {
