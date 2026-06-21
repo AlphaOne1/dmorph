@@ -90,20 +90,27 @@ func (b NamedParamsDialect) RegisterMigration(
 	return wrapIfError("could not register migration", err)
 }
 
+// ParamName represents a named parameter for use in SQL queries or migrations.
 type ParamName string
 
 const (
-	ParamNameID     ParamName = "id"
+
+	// ParamNameID represents the "id" parameter used in SQL queries or migration operations.
+	ParamNameID ParamName = "id"
+
+	// ParamNameMGroup represents the "mgroup" parameter used in SQL queries or migration operations.
 	ParamNameMGroup ParamName = "mgroup"
 )
 
+// NumberedParamsDialect extends NamedParamsDialect to support positional parameterized SQL queries.
 type NumberedParamsDialect struct {
 	NamedParamsDialect
 
-	AppliedMigrationsParamsOrder []ParamName
-	RegisterMigrationParamsOrder []ParamName
+	AppliedMigrationsParamsOrder []ParamName // defines the order of parameters for retrieving applied migrations.
+	RegisterMigrationParamsOrder []ParamName // defines the order of parameters for registering a migration.
 }
 
+// EnsureMigrationTableExists ensures that the migration table, saving the applied migrations ids, exists.
 func (b NumberedParamsDialect) EnsureMigrationTableExists(ctx context.Context, db *sql.DB, tableName string) error {
 	return b.NamedParamsDialect.EnsureMigrationTableExists(ctx, db, tableName)
 }
