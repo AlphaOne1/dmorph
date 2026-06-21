@@ -4,14 +4,16 @@
 package dmorph
 
 // DialectOracle returns a Dialect configured for Oracle Database.
-func DialectOracle() BaseDialect {
-	return BaseDialect{
+func DialectOracle() NamedParamsDialect {
+	return NamedParamsDialect{
 		CreateTemplate: `
             BEGIN
                 EXECUTE IMMEDIATE '
                     CREATE TABLE "%s" (
-                        id        VARCHAR2(255) PRIMARY KEY,
-                        create_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        id        VARCHAR2(255) NOT NULL,
+                        mgroup    VARCHAR2(255) NOT NULL,
+                        create_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (id, mgroup)
                     )
                 ';
             EXCEPTION
@@ -23,9 +25,10 @@ func DialectOracle() BaseDialect {
 		AppliedTemplate: `
             SELECT id
             FROM   "%s"
+            WHERE  mgroup = :mgroup
             ORDER BY create_ts ASC`,
 		RegisterTemplate: `
-            INSERT INTO "%s" (id)
-            VALUES (:id)`,
+            INSERT INTO "%s" (id, mgroup)
+            VALUES (:id, :mgroup)`,
 	}
 }

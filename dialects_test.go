@@ -13,21 +13,64 @@ import (
 	"github.com/AlphaOne1/dmorph"
 )
 
-// TestDialectStatements verifies that each database dialect has valid and
+// TestNumberedParamsDialectStatements verifies that each database dialect has valid and
 // sufficiently complete SQL statement templates.
-func TestDialectStatements(t *testing.T) {
+func TestNumberedParamsDialectStatements(t *testing.T) {
 	t.Parallel()
 
 	// we cannot run tests against all databases, but at least we can test
 	// that the statements for the databases are somehow filled
 	tests := []struct {
 		name   string
-		caller func() dmorph.BaseDialect
+		caller func() dmorph.NumberedParamsDialect
+	}{
+		{name: "MySQL", caller: dmorph.DialectMySQL},
+	}
+
+	for k, test := range tests {
+		t.Run(fmt.Sprintf("TestDialectStatements-%d", k), func(t *testing.T) {
+			t.Parallel()
+
+			dialect := test.caller()
+
+			if len(dialect.CreateTemplate) < 10 {
+				t.Errorf("create template is too short for %v", test.name)
+			}
+
+			assert.Contains(t, dialect.CreateTemplate, "%s",
+				"no table name placeholder in create template for", test.name)
+
+			if len(dialect.AppliedTemplate) < 10 {
+				t.Errorf("applied template is too short for %v", test.name)
+			}
+
+			assert.Contains(t, dialect.AppliedTemplate, "%s",
+				"no table name placeholder in applied template for", test.name)
+
+			if len(dialect.RegisterTemplate) < 10 {
+				t.Errorf("register template is too short for %v", test.name)
+			}
+
+			assert.Contains(t, dialect.RegisterTemplate, "%s",
+				"no table name placeholder in register template for", test.name)
+		})
+	}
+}
+
+// TestNamedParamsDialectStatements verifies that each database dialect has valid and
+// sufficiently complete SQL statement templates.
+func TestNamedParamsDialectStatements(t *testing.T) {
+	t.Parallel()
+
+	// we cannot run tests against all databases, but at least we can test
+	// that the statements for the databases are somehow filled
+	tests := []struct {
+		name   string
+		caller func() dmorph.NamedParamsDialect
 	}{
 		{name: "CSVQ", caller: dmorph.DialectCSVQ},
 		{name: "DB2", caller: dmorph.DialectDB2},
 		{name: "MSSQL", caller: dmorph.DialectMSSQL},
-		{name: "MySQL", caller: dmorph.DialectMySQL},
 		{name: "Oracle", caller: dmorph.DialectOracle},
 		{name: "Postgres", caller: dmorph.DialectPostgres},
 		{name: "SQLite", caller: dmorph.DialectSQLite},
@@ -74,7 +117,7 @@ func TestCallsOnClosedDB(t *testing.T) {
 		dmorph.DialectSQLite().EnsureMigrationTableExists(t.Context(), db, "irrelevant"),
 		"expected error on closed database")
 
-	_, err := dmorph.DialectSQLite().AppliedMigrations(t.Context(), db, "irrelevant")
+	_, err := dmorph.DialectSQLite().AppliedMigrations(t.Context(), db, "irrelevant", "irrelevant")
 	require.Error(t, err, "expected error on closed database")
 }
 
@@ -83,7 +126,7 @@ func TestCallsOnClosedDB(t *testing.T) {
 func TestEnsureMigrationTableExistsSQLError(t *testing.T) {
 	t.Parallel()
 
-	dialect := dmorph.BaseDialect{
+	dialect := dmorph.NamedParamsDialect{
 		CreateTemplate: `
             CRATE TABLE test (
                 id        VARCHAR(255) PRIMARY KEY,
@@ -101,7 +144,7 @@ func TestEnsureMigrationTableExistsSQLError(t *testing.T) {
 func TestEnsureMigrationTableExistsCommitError(t *testing.T) {
 	t.Parallel()
 
-	dialect := dmorph.BaseDialect{
+	dialect := dmorph.NamedParamsDialect{
 		CreateTemplate: `
 			CREATE TABLE t0 (
 			    id INTEGER PRIMARY KEY

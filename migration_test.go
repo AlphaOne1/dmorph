@@ -50,6 +50,7 @@ func TestMigration(t *testing.T) {
 	runErr := dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
+		dmorph.WithGroupName(dmorph.MigrationGroupName),
 		dmorph.WithMigrationsFromFS(migrationsDir))
 
 	assert.NoError(t, runErr, "migrations could not be run")
@@ -202,8 +203,8 @@ func TestMigrationAppliedUnordered(t *testing.T) {
 	require.NoError(t, dmorph.DialectSQLite().EnsureMigrationTableExists(t.Context(), db, "migrations"))
 
 	_, execErr := db.ExecContext(t.Context(), `
-		INSERT INTO migrations (id, create_ts) VALUES ('01_base_table',  '2021-01-02 00:00:00');
-		INSERT INTO migrations (id, create_ts) VALUES ('02_addon_table', '2021-01-01 00:00:00');
+		INSERT INTO migrations (id, mgroup, create_ts) VALUES ('01_base_table',  'default', '2021-01-02 00:00:00');
+		INSERT INTO migrations (id, mgroup, create_ts) VALUES ('02_addon_table', 'default', '2021-01-01 00:00:00');
 	`)
 
 	require.NoError(t, execErr, "unordered test could not be prepared")
@@ -269,14 +270,25 @@ func TestMigrationIsValid(t *testing.T) {
 				Dialect:    dmorph.DialectSQLite(),
 				Migrations: []dmorph.Migration{dmorph.FileMigration{Name: "01"}},
 				TableName:  dmorph.MigrationTableName,
+				GroupName:  dmorph.MigrationGroupName,
 			},
 			err: nil,
+		},
+		{
+			m: dmorph.Morpher{
+				Dialect:    dmorph.DialectSQLite(),
+				Migrations: []dmorph.Migration{dmorph.FileMigration{Name: "01"}},
+				TableName:  dmorph.MigrationTableName,
+				GroupName:  "",
+			},
+			err: dmorph.ErrNoMigrationGroup,
 		},
 		{
 			m: dmorph.Morpher{
 				Dialect:    nil,
 				Migrations: []dmorph.Migration{dmorph.FileMigration{Name: "01"}},
 				TableName:  dmorph.MigrationTableName,
+				GroupName:  dmorph.MigrationGroupName,
 			},
 			err: dmorph.ErrNoDialect,
 		},
@@ -285,6 +297,7 @@ func TestMigrationIsValid(t *testing.T) {
 				Dialect:    dmorph.DialectSQLite(),
 				Migrations: nil,
 				TableName:  dmorph.MigrationTableName,
+				GroupName:  dmorph.MigrationGroupName,
 			},
 			err: dmorph.ErrNoMigrations,
 		},
@@ -293,6 +306,7 @@ func TestMigrationIsValid(t *testing.T) {
 				Dialect:    dmorph.DialectSQLite(),
 				Migrations: []dmorph.Migration{dmorph.FileMigration{Name: "01"}},
 				TableName:  "",
+				GroupName:  dmorph.MigrationGroupName,
 			},
 			err: dmorph.ErrNoMigrationTable,
 		},
@@ -301,6 +315,7 @@ func TestMigrationIsValid(t *testing.T) {
 				Dialect:    dmorph.DialectSQLite(),
 				Migrations: []dmorph.Migration{dmorph.FileMigration{Name: "01"}},
 				TableName:  "blah(); DROP TABLE blah;",
+				GroupName:  dmorph.MigrationGroupName,
 			},
 			err: dmorph.ErrMigrationTableNameInvalid,
 		},
@@ -471,8 +486,8 @@ func TestMigrationApplyUnableRegister(t *testing.T) {
 
 	require.NoError(t, morpherErr, "morpher could not be created")
 
-	d, dialectOK := morpher.Dialect.(dmorph.BaseDialect)
-	require.True(t, dialectOK, "dialect is not a BaseDialect")
+	d, dialectOK := morpher.Dialect.(dmorph.NamedParamsDialect)
+	require.True(t, dialectOK, "dialect is not a NamedParamsDialect")
 
 	d.RegisterTemplate = "utter nonsense 2"
 	morpher.Dialect = d
@@ -498,7 +513,7 @@ func TestMigrationApplyUnableCommit(t *testing.T) {
 	_, execErr := db.ExecContext(t.Context(), "PRAGMA foreign_keys = ON")
 	require.NoError(t, execErr, "foreign keys checking could not be enabled")
 
-	baseDialect, dialectOK := morpher.Dialect.(dmorph.BaseDialect)
+	baseDialect, dialectOK := morpher.Dialect.(dmorph.NamedParamsDialect)
 	require.True(t, dialectOK, "dialect is not a BaseDialect")
 
 	baseDialect.RegisterTemplate = `
@@ -537,7 +552,8 @@ func (okDialect) EnsureMigrationTableExists(
 func (okDialect) AppliedMigrations(
 	_ /* ctx */ context.Context,
 	_ /* db */ *sql.DB,
-	_ /* tableName */ string) ([]string, error) {
+	_ /* tableName */ string,
+	_ /* groupName */ string) ([]string, error) {
 
 	return nil, nil
 }
@@ -546,7 +562,8 @@ func (okDialect) RegisterMigration(
 	_ /* ctx */ context.Context,
 	_ /* tx */ *sql.Tx,
 	_ /* id */ string,
-	_ /* tableName */ string) error {
+	_ /* tableName */ string,
+	_ /* groupName */ string) error {
 
 	return nil
 }

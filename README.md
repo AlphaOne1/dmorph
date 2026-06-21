@@ -248,8 +248,8 @@ type Migration interface {
 }
 ```
 
-The `WithMigrationFromF...` family of options constructs these migrations for convenience. An example
-migration fulfilling this interface could look like this:
+The `WithMigrationFromF...` family of options constructs these migrations for convenience.
+An example migration fulfilling this interface could look like this:
 
 ```go
 type CustomMigration struct {}
@@ -285,24 +285,25 @@ func migrate(db *sql.DB) error {
 ```go
 type Dialect interface {
     EnsureMigrationTableExists(db *sql.DB, tableName string) error
-    AppliedMigrations(db *sql.DB, tableName string) ([]string, error)
-    RegisterMigration(tx *sql.Tx, id string, tableName string) error
+    AppliedMigrations(db *sql.DB, tableName string, groupName string) ([]string, error)
+    RegisterMigration(tx *sql.Tx, id string, tableName string, groupName string) error
 }
 ```
 
-It contains a convenience wrapper, `BaseDialect`, that fits most database systems. It implements the
-above functions using a set of user supplied SQL statements:
+It contains a convenience wrapper, `NamedParamsDialect`, that fits most database systems.
+It implements the above functions using a set of user supplied SQL statements:
 
 ```go
-type BaseDialect struct {
+type NamedParamsDialect struct {
     CreateTemplate   string // statement ensuring the existence of the migration table
     AppliedTemplate  string // statement getting applied migrations ordered by application date
     RegisterTemplate string // statement registering a migration
 }
 ```
 
-All the included SQL dialects use the `BaseDialect` to implement their functionality. The tests for
-*DMorph* are done using the [SQLite dialect](dialect_sqlite.go).
+All the included SQL dialects, less MySQL/MariaDB, use the `NamedParamsDialect` to implement their
+functionality. The tests for *DMorph* are done using the [SQLite dialect](dialect_sqlite.go). MySQL
+does not support named parameters, so it uses the `NumberedParamsDialect`.
 
 As the migration table name can be user supplied, the statements need to have placeholders that will
 fill the final table name. As there might be special characters, it is always enclosed in the

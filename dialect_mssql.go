@@ -4,24 +4,27 @@
 package dmorph
 
 // DialectMSSQL returns a Dialect configured for Microsoft SQL Server databases.
-func DialectMSSQL() BaseDialect {
-	return BaseDialect{
+func DialectMSSQL() NamedParamsDialect {
+	return NamedParamsDialect{
 		CreateTemplate: `
             IF NOT EXISTS (
                 SELECT *
-                FROM sysobjects
-                WHERE name = '%s' AND xtype = 'U'
+                FROM sys.tables
+                WHERE name = '%s'
             )
             CREATE TABLE [%s] (
-                id        NVARCHAR(255) PRIMARY KEY,
-                create_ts DATETIME DEFAULT GETDATE()
+                id        NVARCHAR(255) NOT NULL,
+                mgroup    NVARCHAR(255) NOT NULL,
+                create_ts DATETIME DEFAULT GETDATE(),
+                PRIMARY KEY (id, mgroup)
             )`,
 		AppliedTemplate: `
             SELECT id
             FROM   [%s]
+            WHERE  mgroup = @mgroup
             ORDER BY create_ts ASC`,
 		RegisterTemplate: `
-            INSERT INTO [%s] (id)
-            VALUES (@id)`,
+            INSERT INTO [%s] (id, mgroup)
+            VALUES (@id, @mgroup)`,
 	}
 }

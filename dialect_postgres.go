@@ -4,19 +4,22 @@
 package dmorph
 
 // DialectPostgres returns a Dialect configured for Postgres databases.
-func DialectPostgres() BaseDialect {
-	return BaseDialect{
+func DialectPostgres() NamedParamsDialect {
+	return NamedParamsDialect{
 		CreateTemplate: `
 			CREATE TABLE IF NOT EXISTS "%s" (
-				id        VARCHAR(255) PRIMARY KEY,
-				create_ts TIMESTAMP DEFAULT current_timestamp
+				id        VARCHAR(255) NOT NULL,
+				mgroup    VARCHAR(255) NOT NULL,
+				create_ts TIMESTAMP DEFAULT current_timestamp,
+			    PRIMARY KEY (id, mgroup)
 			)`,
 		AppliedTemplate: `
 			SELECT id
 			FROM   "%s"
+			WHERE  mgroup = :mgroup
 	        ORDER BY create_ts ASC`,
 		RegisterTemplate: `
-			INSERT INTO "%s" (id)
-	        VALUES(:id)`,
+			INSERT INTO "%s" (id, mgroup)
+	        VALUES(:id, :mgroup)`,
 	}
 }

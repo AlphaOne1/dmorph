@@ -15,42 +15,58 @@ import (
 	"time"
 )
 
-// MigrationTableName is the default name for the migration management table in the database.
-const MigrationTableName = "migrations"
+const (
+	// MigrationTableName is the default name for the migration management table in the database.
+	MigrationTableName = "migrations"
 
-// ValidTableNameRex is the regular expression used to check if a given migration table name is valid.
-var ValidTableNameRex = regexp.MustCompile("^[a-zA-Z0-9_]+$")
+	// MigrationGroupName is the default name for the migration group.
+	MigrationGroupName = "default"
+)
 
-// ErrMigrationsUnrelated signals that the set of migrations to apply and the already applied set do not have the
-// same (order of) applied migrations. Applying unrelated migrations could severely harm the database.
-var ErrMigrationsUnrelated = errors.New("migrations unrelated")
+var (
+	// ValidTableNameRex is the regular expression used to check if a given migration table name is valid.
+	ValidTableNameRex = regexp.MustCompile("^[a-zA-Z0-9_]+$")
 
-// ErrMigrationsUnsorted indicates that the already applied migrations were not registered in the order
-// (using the timestamp) that they should have been registered (using their id).
-var ErrMigrationsUnsorted = errors.New("migrations unsorted")
+	// ErrMigrationsUnrelated signals that the set of migrations to apply and the already applied set do not have the
+	// same (order of) applied migrations. Applying unrelated migrations could severely harm the database.
+	ErrMigrationsUnrelated = errors.New("migrations unrelated")
 
-// ErrNoDialect signals that no dialect for the database operations was chosen.
-var ErrNoDialect = errors.New("no dialect")
+	// ErrMigrationsUnsorted indicates that the already applied migrations were not registered in the order
+	// (using the timestamp) that they should have been registered (using their id).
+	ErrMigrationsUnsorted = errors.New("migrations unsorted")
 
-// ErrNoMigrations signals that no migrations were chosen to be applied.
-var ErrNoMigrations = errors.New("no migrations")
+	// ErrNoDialect signals that no dialect for the database operations was chosen.
+	ErrNoDialect = errors.New("no dialect")
 
-// ErrNoMigrationTable occurs if there is no migration table present.
-var ErrNoMigrationTable = errors.New("no migration table")
+	// ErrNoMigrations signals that no migrations were chosen to be applied.
+	ErrNoMigrations = errors.New("no migrations")
 
-// ErrMigrationTableNameInvalid occurs if the migration table does not adhere to ValidTableNameRex.
-var ErrMigrationTableNameInvalid = errors.New("invalid migration table name")
+	// ErrNoMigrationTable occurs if there is no migration table present.
+	ErrNoMigrationTable = errors.New("no migration table")
 
-// ErrMigrationsTooOld signals that the migrations to be applied are older than the migrations that are already
-// present in the database. This error can occur when an older version of the application is started using a database
-// used already by a newer version of the application.
-var ErrMigrationsTooOld = errors.New("migrations too old")
+	// ErrNoMigrationGroup occurs if there is no migration group present.
+	ErrNoMigrationGroup = errors.New("no migration group")
+
+	// ErrMigrationTableNameInvalid occurs if the migration table does not adhere to ValidTableNameRex.
+	ErrMigrationTableNameInvalid = errors.New("invalid migration table name")
+
+	// ErrMigrationGroupNameInvalid occurs if the migration group name is empty.
+	ErrMigrationGroupNameInvalid = errors.New("invalid migration group name")
+
+	// ErrParamNameInvalid occurs if the param name is invalid.
+	ErrParamNameInvalid = errors.New("invalid param name")
+
+	// ErrMigrationsTooOld signals that the migrations to be applied are older than the migrations that are already
+	// present in the database. This error can occur when an older version of the application is started using a database
+	// used already by a newer version of the application.
+	ErrMigrationsTooOld = errors.New("migrations too old")
+)
 
 // Dialect is an interface describing the functionalities needed to manage migrations inside a database.
 type Dialect interface {
 	EnsureMigrationTableExists(ctx context.Context, db *sql.DB, tableName string) error
-	AppliedMigrations(ctx context.Context, db *sql.DB, tableName string) ([]string, error)
-	RegisterMigration(ctx context.Context, tx *sql.Tx, id string, tableName string) error
+	AppliedMigrations(ctx context.Context, db *sql.DB, tableName string, groupName string) ([]string, error)
+	RegisterMigration(ctx context.Context, tx *sql.Tx, id string, tableName string, groupName string) error
 }
 
 // Migration is an interface to provide abstract information about the migration at hand.
@@ -76,6 +92,7 @@ type Morpher struct {
 	Dialect    Dialect      // database vendor specific dialect
 	Migrations []Migration  // migrations to be applied
 	TableName  string       // table name for migration management
+	GroupName  string       // name of the migration group
 	Log        *slog.Logger // logger to be used
 }
 
@@ -128,12 +145,27 @@ func WithTableName(tableName string) func(*Morpher) error {
 	}
 }
 
+// WithGroupName sets the migration group name on the provided Morpher instance. If not supplied, the
+// default MigrationGroupName is used instead.
+func WithGroupName(groupName string) func(*Morpher) error {
+	return func(m *Morpher) error {
+		if groupName == "" {
+			return ErrMigrationGroupNameInvalid
+		}
+
+		m.GroupName = groupName
+
+		return nil
+	}
+}
+
 // NewMorpher creates a new Morpher configuring it with the given options.
 // It ensures that the newly created Morpher has migrations and a database dialect configured.
 // If no migration table name is given, the default MigrationTableName is used instead.
 func NewMorpher(options ...MorphOption) (*Morpher, error) {
 	morpher := &Morpher{
 		TableName: MigrationTableName,
+		GroupName: MigrationGroupName,
 		Log:       slog.Default(),
 	}
 
@@ -160,8 +192,12 @@ func (m *Morpher) IsValid() error {
 		return ErrNoMigrations
 	}
 
-	if len(m.TableName) < 1 {
+	if m.TableName == "" {
 		return ErrNoMigrationTable
+	}
+
+	if m.GroupName == "" {
+		return ErrNoMigrationGroup
 	}
 
 	if !ValidTableNameRex.MatchString(m.TableName) {
@@ -185,7 +221,7 @@ func (m *Morpher) Run(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("could not create migration table: %w", err)
 	}
 
-	appliedMigrations, appliedMigrationsErr := m.Dialect.AppliedMigrations(ctx, db, m.TableName)
+	appliedMigrations, appliedMigrationsErr := m.Dialect.AppliedMigrations(ctx, db, m.TableName, m.GroupName)
 
 	if appliedMigrationsErr != nil {
 		return fmt.Errorf("could not get applied migrations: %w", appliedMigrationsErr)
@@ -265,7 +301,7 @@ func (m *Morpher) runOneMigration(ctx context.Context, db *sql.DB, mig Migration
 		return errors.Join(err, rollbackErr)
 	}
 
-	if err = m.Dialect.RegisterMigration(ctx, tx, mig.Key(), m.TableName); err != nil {
+	if err = m.Dialect.RegisterMigration(ctx, tx, mig.Key(), m.TableName, m.GroupName); err != nil {
 		rollbackErr := tx.Rollback()
 
 		return errors.Join(err, rollbackErr)
