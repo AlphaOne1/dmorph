@@ -6,7 +6,7 @@ module github.com/AlphaOne1/dmorph
 go 1.25.0
 
 require (
-	github.com/ncruces/go-sqlite3 v0.35.0
+	github.com/ncruces/go-sqlite3 v0.35.1
 	github.com/stretchr/testify v1.11.1
 )
 
