@@ -749,7 +749,11 @@ func (m TestInvalidMigrationImpl) Migrate(ctx context.Context, tx *sql.Tx) error
 
 		DELETE FROM t0 WHERE id = 1;`)
 
-	return err
+	if err != nil {
+		return fmt.Errorf("could not execute migration: %w", err)
+	}
+
+	return nil
 }
 
 func TestInvalidMigrationKey(t *testing.T) {
@@ -800,9 +804,9 @@ func TestMigrationInvalidAppliedSemVer(t *testing.T) {
 
 	require.NoError(t, err, "preparation must succeed")
 
-	_, err = db.ExecContext(t.Context(), `
-		INSERT INTO `+dmorph.MigrationTableName+` (id, mgroup)
-		VALUES ('0_impossible', 'default')`)
+	_, err = db.ExecContext(t.Context(), fmt.Sprintf(`
+		INSERT INTO "%s" (id, mgroup)
+		VALUES ('0_impossible', '%s')`, dmorph.MigrationTableName, dmorph.MigrationGroupName))
 
 	require.NoError(t, err, "preparation must succeed")
 
