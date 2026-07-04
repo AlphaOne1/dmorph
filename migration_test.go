@@ -23,6 +23,9 @@ import (
 //go:embed testData
 var testMigrationsDir embed.FS
 
+//go:embed testDataSemVer
+var testMigrationsSemVerDir embed.FS
+
 // openTempSQLite opens a temporary in-memory SQLite database for testing and ensures it is closed after the test ends.
 func openTempSQLite(t *testing.T) *sql.DB {
 	t.Helper()
@@ -37,7 +40,7 @@ func openTempSQLite(t *testing.T) *sql.DB {
 	return db
 }
 
-// TestMigration tests the happy flow.
+// TestMigrationNamedParams tests the happy flow.
 func TestMigrationNamedParams(t *testing.T) {
 	t.Parallel()
 
@@ -52,6 +55,26 @@ func TestMigrationNamedParams(t *testing.T) {
 		dmorph.WithDialect(dmorph.DialectSQLite()),
 		dmorph.WithGroupName(dmorph.MigrationGroupName),
 		dmorph.WithMigrationKeyProperties(dmorph.MigrationKeyAlphabetical()),
+		dmorph.WithMigrationsFromFS(migrationsDir))
+
+	assert.NoError(t, runErr, "migrations could not be run")
+}
+
+// TestMigrationNamedParamsSemVer tests the happy flow.
+func TestMigrationNamedParamsSemVer(t *testing.T) {
+	t.Parallel()
+
+	db := openTempSQLite(t)
+
+	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsSemVerDir, "testDataSemVer")
+
+	require.NoError(t, migrationsDirErr, "migrations directory could not be opened")
+
+	runErr := dmorph.Run(t.Context(),
+		db,
+		dmorph.WithDialect(dmorph.DialectSQLite()),
+		dmorph.WithGroupName(dmorph.MigrationGroupName),
+		dmorph.WithMigrationKeyProperties(dmorph.MigrationKeySemVerPrefix()),
 		dmorph.WithMigrationsFromFS(migrationsDir))
 
 	assert.NoError(t, runErr, "migrations could not be run")
@@ -695,4 +718,100 @@ func TestApplyFailsOnCanceledContext(t *testing.T) {
 
 	require.Error(t, err)
 	require.ErrorContains(t, err, "context cancelled")
+}
+
+func TestMigrationInvalidGroupOption(t *testing.T) {
+	t.Parallel()
+
+	_, err := dmorph.NewMorpher(dmorph.WithGroupName(""))
+
+	require.ErrorIs(t, err, dmorph.ErrMigrationGroupNameInvalid)
+}
+
+type TestInvalidMigrationImpl struct {
+	WantKey string
+}
+
+func (m TestInvalidMigrationImpl) Key() string { return m.WantKey }
+func (m TestInvalidMigrationImpl) Migrate(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
+		CREATE TABLE t0 (
+			id INTEGER PRIMARY KEY
+		);
+
+		CREATE TABLE t1 (
+			id        INTEGER PRIMARY KEY,
+			parent_id INTEGER REFERENCES t0 (id) DEFERRABLE INITIALLY DEFERRED
+		);
+
+		INSERT INTO t0 (id)            VALUES (1);
+		INSERT INTO t1 (id, parent_id) VALUES (1, 1);
+
+		DELETE FROM t0 WHERE id = 1;`)
+
+	return err
+}
+
+func TestInvalidMigrationKey(t *testing.T) {
+	t.Parallel()
+
+	_, err := dmorph.NewMorpher(
+		dmorph.WithDialect(dmorph.DialectSQLite()),
+		dmorph.WithMigrationKeyProperties(dmorph.MigrationKeySemVerPrefix()),
+		dmorph.WithMigrations(
+			TestInvalidMigrationImpl{WantKey: "xyz_test"}))
+
+	assert.ErrorIs(t, err, dmorph.ErrMigrationKeyFormat)
+}
+
+func TestUncommitableMigration(t *testing.T) {
+	t.Parallel()
+
+	db := openTempSQLite(t)
+	db.SetMaxOpenConns(1)
+
+	_, execErr := db.ExecContext(t.Context(), "PRAGMA foreign_keys = ON")
+
+	require.NoError(t, execErr, "foreign keys checking could not be enabled")
+
+	morpher, err := dmorph.NewMorpher(
+		dmorph.WithDialect(dmorph.DialectSQLite()),
+		dmorph.WithMigrations(
+			TestInvalidMigrationImpl{WantKey: "0_impossible"}))
+
+	require.NoError(t, err)
+
+	err = morpher.Run(t.Context(), db)
+
+	assert.ErrorContains(t, err, "FOREIGN KEY constraint failed")
+}
+
+// TestMigrationNamedParamsSemVer tests the happy flow.
+func TestMigrationInvalidAppliedSemVer(t *testing.T) {
+	t.Parallel()
+
+	db := openTempSQLite(t)
+
+	migrationsDir, migrationsDirErr := fs.Sub(testMigrationsSemVerDir, "testDataSemVer")
+
+	require.NoError(t, migrationsDirErr, "migrations directory could not be opened")
+
+	err := dmorph.DialectSQLite().EnsureMigrationTableExists(t.Context(), db, dmorph.MigrationTableName)
+
+	require.NoError(t, err, "preparation must succeed")
+
+	_, err = db.ExecContext(t.Context(), `
+		INSERT INTO `+dmorph.MigrationTableName+` (id, mgroup)
+		VALUES ('0_impossible', 'default')`)
+
+	require.NoError(t, err, "preparation must succeed")
+
+	runErr := dmorph.Run(t.Context(),
+		db,
+		dmorph.WithDialect(dmorph.DialectSQLite()),
+		dmorph.WithGroupName(dmorph.MigrationGroupName),
+		dmorph.WithMigrationKeyProperties(dmorph.MigrationKeySemVerPrefix()),
+		dmorph.WithMigrationsFromFS(migrationsDir))
+
+	assert.ErrorIs(t, runErr, dmorph.ErrMigrationKeyFormat)
 }

@@ -171,3 +171,37 @@ func TestEnsureMigrationTableExistsCommitError(t *testing.T) {
 
 	assert.Error(t, dialect.EnsureMigrationTableExists(t.Context(), db, "test"), "expected error")
 }
+
+// TestAppliedMigrationsQueryError tests the behavior in case of an error when querying applied migrations.
+func TestAppliedMigrationsNumberedQueryError(t *testing.T) {
+	t.Parallel()
+
+	dialect := dmorph.NumberedParamsDialect{
+		NamedParamsDialect: dmorph.NamedParamsDialect{
+			AppliedTemplate: `SELECT * FROM "%s"`,
+		},
+	}
+
+	db := openTempSQLite(t)
+
+	_, err := dialect.AppliedMigrations(t.Context(), db, "noexist", "default")
+
+	assert.Error(t, err, "expected error")
+}
+
+// TestAppliedMigrationsNumberedScan tests the behavior of NumberedParamsDialect when scanning applied migrations.
+func TestAppliedMigrationsNumberedScan(t *testing.T) {
+	t.Parallel()
+
+	dialect := dmorph.NumberedParamsDialect{
+		NamedParamsDialect: dmorph.NamedParamsDialect{
+			AppliedTemplate: `SELECT '%s'`,
+		},
+	}
+
+	db := openTempSQLite(t)
+
+	_, err := dialect.AppliedMigrations(t.Context(), db, "noexist", "default")
+
+	assert.NoError(t, err, "expected no error")
+}
