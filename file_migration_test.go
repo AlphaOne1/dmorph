@@ -23,7 +23,7 @@ func TestWithMigrationFromFile(t *testing.T) {
 	runErr := dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationFromFile("testData/01_base_table.sql"))
+		dmorph.WithMigrationsFromFiles("testData/01_base_table.sql"))
 
 	assert.NoError(t, runErr, "did not expect an error")
 }
@@ -36,7 +36,7 @@ func TestWithMigrationFromFileError(t *testing.T) {
 	runErr := dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationFromFile("testData/00_non_existent.sql"))
+		dmorph.WithMigrationsFromFiles("testData/00_non_existent.sql"))
 
 	var pathErr *fs.PathError
 	assert.ErrorAs(t, runErr, &pathErr, "unexpected error")
@@ -49,7 +49,7 @@ func TestMigrationFromFileFSError(t *testing.T) {
 
 	dir := os.DirFS("testData")
 
-	mig := dmorph.TmigrationFromFileFS("nonexistent", dir, slog.Default())
+	mig := dmorph.TmigrationFromFileFS(dir, slog.Default(), "nonexistent")
 
 	err := mig.Migrate(t.Context(), nil)
 

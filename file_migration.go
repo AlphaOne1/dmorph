@@ -35,40 +35,44 @@ func (f FileMigration) Migrate(ctx context.Context, tx *sql.Tx) error {
 	return f.migrationFunc(ctx, tx, f.Name)
 }
 
-// WithMigrationFromFile generates a FileMigration that will run the content of the given file.
-func WithMigrationFromFile(name string) MorphOption {
+// WithMigrationsFromFiles generates a FileMigration that will run the content of the given file.
+func WithMigrationsFromFiles(names ...string) MorphOption {
 	return func(morpher *Morpher) error {
-		morpher.Migrations = append(morpher.Migrations, FileMigration{
-			Name: name,
-			migrationFunc: func(ctx context.Context, tx *sql.Tx, migration string) error {
-				m, mErr := os.Open(filepath.Clean(migration))
+		for _, n := range names {
+			morpher.Migrations = append(morpher.Migrations, FileMigration{
+				Name: n,
+				migrationFunc: func(ctx context.Context, tx *sql.Tx, migration string) error {
+					m, mErr := os.Open(filepath.Clean(migration))
 
-				if mErr != nil {
-					return wrapIfError("could not open file "+migration, mErr)
-				}
+					if mErr != nil {
+						return wrapIfError("could not open file "+migration, mErr)
+					}
 
-				defer func() { _ = m.Close() }()
+					defer func() { _ = m.Close() }()
 
-				return applyStepsStream(ctx, tx, m, migration, morpher.Log)
-			},
-		})
+					return applyStepsStream(ctx, tx, m, migration, morpher.Log)
+				},
+			})
+		}
 
 		return nil
 	}
 }
 
-// WithMigrationFromFileFS generates a FileMigration that will run the content of the given file from the
+// WithMigrationsFromFilesFS generates FileMigration that will run the content of the given files from the
 // given filesystem.
-func WithMigrationFromFileFS(name string, dir fs.FS) MorphOption {
+func WithMigrationsFromFilesFS(dir fs.FS, names ...string) MorphOption {
 	return func(morpher *Morpher) error {
-		morpher.Migrations = append(morpher.Migrations, migrationFromFileFS(name, dir, morpher.Log))
+		for _, n := range names {
+			morpher.Migrations = append(morpher.Migrations, migrationFromFileFS(dir, morpher.Log, n))
+		}
 
 		return nil
 	}
 }
 
-// WithMigrationsFromFS generates a FileMigration that will run all migration scripts of the files in the given
-// filesystem.
+// WithMigrationsFromFS generates a FileMigration that will run all migration scripts of the `.sql`
+// files in the given filesystem.
 func WithMigrationsFromFS(d fs.FS) MorphOption {
 	return func(morpher *Morpher) error {
 		dirEntry, err := fs.ReadDir(d, ".")
@@ -79,7 +83,7 @@ func WithMigrationsFromFS(d fs.FS) MorphOption {
 
 				if entry.Type().IsRegular() && strings.HasSuffix(entry.Name(), ".sql") {
 					morpher.Migrations = append(morpher.Migrations,
-						migrationFromFileFS(entry.Name(), d, morpher.Log))
+						migrationFromFileFS(d, morpher.Log, entry.Name()))
 				}
 			}
 		}
@@ -89,7 +93,7 @@ func WithMigrationsFromFS(d fs.FS) MorphOption {
 }
 
 // migrationFromFileFS creates a FileMigration instance for a specific migration file from a fs.FS directory.
-func migrationFromFileFS(name string, dir fs.FS, log *slog.Logger) FileMigration {
+func migrationFromFileFS(dir fs.FS, log *slog.Logger, name string) FileMigration {
 	return FileMigration{
 		Name: name,
 		FS:   dir,

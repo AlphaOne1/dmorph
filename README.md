@@ -186,13 +186,13 @@ import (
 func migrate(db *sql.DB) error {
     return dmorph.Run(db,
         dmorph.WithDialect(dmorph.DialectSQLite()),
-        dmorph.WithMigrationFromFile("01_base_tables.sql"))
+        dmorph.WithMigrationsFromFiles("01_base_tables.sql"))
 }
 
 ...
 ```
 
-In this example just one file is used, the `WithMigrationFromFile` can be given multiple times.
+In this example just one file is used, the `WithMigrationsFromFiles` can be given multiple times.
 Migrations are executed in alphabetical order of their key. For files the key is the file's name.
 The `WithDialect` option is used to select the correct SQL dialect, as *DMorph* does not have
 a means to get that information (yet).

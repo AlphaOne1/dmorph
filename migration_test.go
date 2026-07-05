@@ -113,7 +113,7 @@ func TestMigrationUpdate(t *testing.T) {
 	runErr := dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationFromFileFS("01_base_table.sql", migrationsDir))
+		dmorph.WithMigrationsFromFilesFS(migrationsDir, "01_base_table.sql"))
 
 	require.NoError(t, runErr, "preparation migrations could not be run")
 
@@ -178,7 +178,7 @@ func TestMigrationTooOld(t *testing.T) {
 	runErr = dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationFromFileFS("01_base_table.sql", migrationsDir))
+		dmorph.WithMigrationsFromFilesFS(migrationsDir, "01_base_table.sql"))
 
 	assert.ErrorIs(t, runErr, dmorph.ErrMigrationsTooOld, "migrations did not give expected error")
 }
@@ -203,7 +203,7 @@ func TestMigrationUnrelated0(t *testing.T) {
 	runErr = dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationFromFileFS("02_addon_table.sql", migrationsDir))
+		dmorph.WithMigrationsFromFilesFS(migrationsDir, "02_addon_table.sql"))
 
 	assert.ErrorIs(t, runErr, dmorph.ErrMigrationsUnrelated, "migrations did not give expected error")
 }
@@ -221,14 +221,14 @@ func TestMigrationUnrelated1(t *testing.T) {
 	runErr := dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationFromFileFS("01_base_table.sql", migrationsDir))
+		dmorph.WithMigrationsFromFilesFS(migrationsDir, "01_base_table.sql"))
 
 	require.NoError(t, runErr, "preparation migrations could not be run")
 
 	runErr = dmorph.Run(t.Context(),
 		db,
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationFromFileFS("02_addon_table.sql", migrationsDir))
+		dmorph.WithMigrationsFromFilesFS(migrationsDir, "02_addon_table.sql"))
 
 	assert.ErrorIs(t, runErr, dmorph.ErrMigrationsUnrelated, "migrations did not give expected error")
 }
@@ -393,7 +393,7 @@ func TestMigrationWithLogger(t *testing.T) {
 
 	morpher, err := dmorph.NewMorpher(
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationFromFile("testData/01_base_table.sql"),
+		dmorph.WithMigrationsFromFiles("testData/01_base_table.sql"),
 		dmorph.WithLog(newLog),
 	)
 
@@ -419,7 +419,7 @@ func TestMigrationWithTableNameValid(t *testing.T) {
 
 	morpher, err := dmorph.NewMorpher(
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationFromFile("testData/01_base_table.sql"),
+		dmorph.WithMigrationsFromFiles("testData/01_base_table.sql"),
 		dmorph.WithTableName("dimorphodon"),
 	)
 
@@ -434,7 +434,7 @@ func TestMigrationWithTableNameInvalidSize(t *testing.T) {
 
 	_, err := dmorph.NewMorpher(
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationFromFile("testData/01_base_table.sql"),
+		dmorph.WithMigrationsFromFiles("testData/01_base_table.sql"),
 		dmorph.WithTableName(""),
 	)
 
@@ -448,7 +448,7 @@ func TestMigrationWithTableNameInvalidChars(t *testing.T) {
 
 	_, err := dmorph.NewMorpher(
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationFromFile("testData/01_base_table.sql"),
+		dmorph.WithMigrationsFromFiles("testData/01_base_table.sql"),
 		dmorph.WithTableName("di/mor/pho/don"),
 	)
 
@@ -478,7 +478,7 @@ func TestMigrationRunInvalidCreate(t *testing.T) {
 
 	morpher, morpherErr := dmorph.NewMorpher(
 		dmorph.WithDialect(dialect),
-		dmorph.WithMigrationFromFile("testData/01_base_table.sql"))
+		dmorph.WithMigrationsFromFiles("testData/01_base_table.sql"))
 
 	require.NoError(t, morpherErr, "morpher could not be created")
 
@@ -498,7 +498,7 @@ func TestMigrationRunInvalidApplied(t *testing.T) {
 
 	morpher, morpherErr := dmorph.NewMorpher(
 		dmorph.WithDialect(dialect),
-		dmorph.WithMigrationFromFile("testData/01_base_table.sql"))
+		dmorph.WithMigrationsFromFiles("testData/01_base_table.sql"))
 
 	require.NoError(t, morpherErr, "morpher could not be created")
 
@@ -515,7 +515,7 @@ func TestMigrationApplyInvalidDB(t *testing.T) {
 
 	morpher, morpherErr := dmorph.NewMorpher(
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationFromFile("testData/01_base_table.sql"))
+		dmorph.WithMigrationsFromFiles("testData/01_base_table.sql"))
 
 	require.NoError(t, morpherErr, "morpher could not be created")
 
@@ -532,7 +532,7 @@ func TestMigrationApplyUnableRegister(t *testing.T) {
 
 	morpher, morpherErr := dmorph.NewMorpher(
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationFromFile("testData/01_base_table.sql"))
+		dmorph.WithMigrationsFromFiles("testData/01_base_table.sql"))
 
 	require.NoError(t, morpherErr, "morpher could not be created")
 
@@ -556,7 +556,7 @@ func TestMigrationApplyUnableCommit(t *testing.T) {
 
 	morpher, morpherErr := dmorph.NewMorpher(
 		dmorph.WithDialect(dmorph.DialectSQLite()),
-		dmorph.WithMigrationFromFile("testData/01_base_table.sql"))
+		dmorph.WithMigrationsFromFiles("testData/01_base_table.sql"))
 
 	require.NoError(t, morpherErr, "morpher could not be created")
 
