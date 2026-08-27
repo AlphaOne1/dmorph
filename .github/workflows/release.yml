@@ -6,6 +6,7 @@ name: Release
 on:
     release:
         types:
+          - prereleased
           - published
 
 permissions: read-all
@@ -31,6 +32,20 @@ jobs:
                 fetch-depth: 0
                 ref: ${{ github.event.release.tag_name }}
 
+          - name: Set Project Name
+            shell: bash
+            run: |
+                PROJECT_NAME=$(go list -m | sed -r 's/(.*\/)*(.+)/\2/')
+                echo "PROJECT_NAME=$PROJECT_NAME" >> $GITHUB_ENV
+
+          - name: Generate SBOM with Syft
+            uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+            with:
+                path: .
+                output-file: ${{ env.PROJECT_NAME }}-sbom.spdx.json
+                upload-artifact: false
+                upload-release-assets: false
+
           - name: Generate source archive
             shell: bash
             env:
@@ -38,12 +53,11 @@ jobs:
             run: |
                 set -euo pipefail
 
-                PROJECT_NAME=`go list -m | sed -r 's/(.*\/)*(.+)/\2/'`
                 TAG=`echo "$TAG_NAME" | sed 's/\//-/g'`
                 git archive \
                     --format=tar.gz \
-                    --prefix="${PROJECT_NAME}-src-${TAG}/" \
-                    --output="${PROJECT_NAME}-src-${TAG}.tar.gz" \
+                    --prefix="${{ env.PROJECT_NAME }}-src-${TAG}/" \
+                    --output="${{ env.PROJECT_NAME }}-src-${TAG}.tar.gz" \
                     "$TAG_NAME"
 
           - name: Upload Release (via GitHub CLI)
@@ -55,7 +69,9 @@ jobs:
                 set -euo pipefail
                 
                 PROJECT_NAME=`go list -m | sed -r 's/(.*\/)*(.+)/\2/'`
-                gh release upload "$TAG_NAME" ${PROJECT_NAME}-src-*.tar.gz --clobber
+                gh release upload "$TAG_NAME"    \
+                    ${PROJECT_NAME}-src-*.tar.gz \
+                    ${PROJECT_NAME}-sbom.spdx.json --clobber
 
     ChecksumReleaseAssets:
         needs: Build
