@@ -97,6 +97,11 @@ jobs:
             with:
                 go-version: stable
 
+          - name: Install gometalinter
+            run: |
+                go install github.com/alecthomas/gometalinter@latest
+                gometalinter --install
+
           - name: Install goreportcard-cli
             run: go install github.com/gojp/goreportcard/cmd/goreportcard-cli@latest
 
