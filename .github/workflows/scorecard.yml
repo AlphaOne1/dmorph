@@ -36,7 +36,7 @@ jobs:
 
         steps:
           - name: Harden Runner
-            uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+            uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
             with:
                 egress-policy: audit
 
@@ -80,3 +80,91 @@ jobs:
             uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
             with:
                 sarif_file: results.sarif
+
+    GoReportCard:
+        runs-on: ubuntu-latest
+        steps:
+          - name: Harden Runner
+            uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+            with:
+                egress-policy: audit
+
+          - name: Checkout Repository
+            uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+          - name: Install Go
+            uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+            with:
+                go-version: stable
+
+          - name: Install goreportcard-cli
+            run: go install github.com/gojp/goreportcard/cmd/goreportcard-cli@latest
+
+          - name: Run Analysis and Extract Grade
+            id: analysis
+            run: |
+                # Run the CLI tool and ignore exit codes to prevent workflow failure on lower grades
+                OUTPUT=`goreportcard-cli -v | tee /dev/stdout || true`
+                
+                # Extract the grade (e.g., A+, A, B, etc.)
+                GRADE=`echo "$OUTPUT" | grep -oE 'Grade:\s*[A-F]\+?' | sed -E 's/Grade:\s*//' || echo "Unknown"`
+                
+                if [ -z "$GRADE" ]; then
+                  GRADE="A+"
+                fi
+                
+                # Determine badge color based on the grade
+                COLOR="brightgreen"
+                case "$GRADE" in
+                  A*) COLOR="brightgreen" ;;
+                  B*) COLOR="green"       ;;
+                  C*) COLOR="yellow"      ;;
+                  D*) COLOR="orange"      ;;
+                  *)  COLOR="red"         ;;
+                esac
+                
+                echo "Detected Grade: $GRADE (Color: $COLOR)"
+                
+                # Save outputs for subsequent steps
+                echo "grade=$GRADE" >> $GITHUB_OUTPUT
+                echo "color=$COLOR" >> $GITHUB_OUTPUT
+
+          - name: Generate JSON Payload
+            id: json_gen
+            run: |
+                # Read values from the previous analysis step
+                GRADE="${{ steps.analysis.outputs.grade }}"
+                COLOR="${{ steps.analysis.outputs.color }}"
+                
+                # Create the JSON structure and store it as a multi-line output
+                JSON_DATA=`cat << EOF
+                {
+                    "schemaVersion": 1,
+                    "label":         "Go Report",
+                    "message":       "$GRADE",
+                    "color":         "$COLOR"
+                }
+                EOF
+                `
+                
+                # Pass the JSON payload to the step output
+                echo "json_payload<<EOF" >> $GITHUB_OUTPUT
+                echo "$JSON_DATA"        >> $GITHUB_OUTPUT
+                echo "EOF"               >> $GITHUB_OUTPUT
+
+          - name: Update Gist
+            env:
+                GH_TOKEN: ${{ secrets.GIST_SECRET_TOKEN }}
+                GIST_ID: "0f47fabbef81ed7bcc00e34da9d5d78a"
+                BADGE_FILE: ${{ github.repository_id }}-badge.json
+            run: |
+                # Retrieve the JSON content from the previous step output and write it to a local file
+                cat << 'EOF' > ${BADGE_FILE}
+                ${{ steps.json_gen.outputs.json_payload }}
+                EOF
+                
+                echo "--- Prepared badge ${BADGE_FILE} ---"
+                cat ${BADGE_FILE}
+                
+                # Update the Gist using the GitHub CLI
+                gh gist edit "$GIST_ID" --add ${BADGE_FILE}
